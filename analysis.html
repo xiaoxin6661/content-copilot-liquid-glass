@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>笔记分析 · Content Copilot</title>
+<link rel="stylesheet" href="./assets/style.css?v=2300">
+<script src="./assets/data.js"></script>
+<script src="./assets/main.js?v=2300"></script>
+</head>
+<body>
+<script>
+function toast(msg, dur=2200) {
+  let t = document.getElementById('_toast');
+  if (!t) { t = document.createElement('div'); t.id = '_toast';
+    t.style.cssText = 'position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:rgba(30,30,40,0.92);color:#fff;padding:10px 22px;border-radius:20px;font-size:13px;z-index:9999;pointer-events:none;opacity:0;transition:opacity .2s';
+    document.body.appendChild(t); }
+  t.textContent = msg; t.style.opacity = '1';
+  clearTimeout(t._t); t._t = setTimeout(() => t.style.opacity = '0', dur);
+}
+
+const BENCH = { ctr_good:5, ctr_ok:3, ces_good:8, ces_ok:4, play_good:50, play_ok:30, fans_good:0.5, fans_ok:0.2 };
+
+function diagnose(a) {
+  const imp = a.imp || 0;
+  const ctr = a.ctr || 0;
+  const ces = a.ces || 0;
+  const play = a.playRate || 0;
+  const fans = a.fans || 0;
+  const fansRate = imp > 0 ? (fans / imp * 100) : 0;
+  const issues = [], advice = [], strong = [];
+  if (ctr >= BENCH.ctr_good) strong.push(`CTR ${ctr}% ✅ 封面/标题强`);
+  else if (ctr >= BENCH.ctr_ok) advice.push(`CTR ${ctr}% 合格，可优化封面文字`);
+  else issues.push(`CTR ${ctr}% 偏低，封面/标题需迭代`);
+  if (ces >= BENCH.ces_good) strong.push(`互动率 ${ces}% ✅ 内容共鸣强`);
+  else if (ces >= BENCH.ces_ok) advice.push(`互动率 ${ces}% 中等，结尾可加 CTA`);
+  else issues.push(`互动率 ${ces}% 偏低，结尾钩子弱`);
+  if (a.type === '视频') {
+    if (play >= BENCH.play_good) strong.push(`完播率 ${play}% ✅ 节奏好`);
+    else if (play >= BENCH.play_ok) advice.push(`完播率 ${play}% 合格，前3s可再强化`);
+    else issues.push(`完播率 ${play}% 偏低，前3s钩子弱`);
+  }
+  if (fansRate >= BENCH.fans_good) strong.push(`涨粉率 ${fansRate.toFixed(2)}% ✅ 种草效果强`);
+  else if (fansRate >= BENCH.fans_ok) advice.push(`涨粉率 ${fansRate.toFixed(2)}% 中等`);
+  else issues.push(`涨粉率 ${fansRate.toFixed(2)}% 偏低`);
+  let invest = '';
+  if (ctr >= BENCH.ctr_ok && ces >= BENCH.ces_ok) invest = '✅ 数据健康，建议追投 2-3x，定向「跑步/运动」人群';
+  else if (issues.length) invest = '⚠️ 内容待优化，先迭代再加投';
+  else invest = '📊 数据中等，小额测试观察趋势';
+  return { strong, advice, issues, invest, fansRate: fansRate.toFixed(2) };
+}
+
+function diagColor(a) {
+  const d = diagnose(a);
+  if (d.issues.length === 0 && d.strong.length >= 2) return '#34c759';
+  if (d.issues.length >= 2) return '#ff3b30';
+  return '#ff9500';
+}
+
+let _sortBy = 'ctr'; // 默认 CTR 排序
+window.setSort = function(s) { _sortBy = s; render(); };
+
+function render() {
+  const collabs = store.get('collabs', []);
+  const orphans = store.get('analysis_orphans', []);
+  // 把 orphans 转成统一格式供渲染
+  const orphanCards = orphans.map(o => ({
+    id: 'orphan_' + o.noteId,
+    name: o.name || o.noteId,
+    topic: o.title || '',
+    analysis: { imp:o.imp, ctr:o.ctr, ces:o.ces, playRate:o.playRate, fans:o.fans,
+      type:o.type, title:o.title, invest:o.invest, tags:o.tags, templates:o.templates||[], fansRate:o.fansRate, updatedAt:o.updatedAt }
+  }));
+  let withData = [...collabs.filter(c => c.analysis), ...orphanCards];
+  // 排序
+  const sortKey = { ctr:'ctr', imp:'imp', playRate:'playRate', fans:'fans' }[_sortBy] || 'ctr';
+  withData.sort((a,b) => (b.analysis[sortKey]||0) - (a.analysis[sortKey]||0));
+
+  const html = `
+<div class="page-wrap">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+    <div class="section-title" style="margin-bottom:0;">📊 笔记分析</div>
+  </div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px;">粘贴笔记 ID，点「一键分析」，结果直接展示在下方</div>
+
+  <!-- 输入区 -->
+  <div class="glass card" style="margin-bottom:16px;padding:20px 22px;">
+    <div style="font-weight:600;font-size:14px;margin-bottom:8px;">输入笔记 ID</div>
+    <textarea id="ba_ids" placeholder="每行一个 Note ID，例如：&#10;6a54b674000000001003dff5&#10;6a4254b3000000001503c834" style="width:100%;min-height:100px;font-family:monospace;font-size:12px;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.1);background:rgba(255,255,255,0.7);box-sizing:border-box;resize:vertical;color:var(--text-body);"></textarea>
+    <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button class="btn-primary" id="btn_analyze" onclick="fetchAndAnalyze()">⚡ 一键分析</button>
+      <button class="btn-ghost" style="font-size:12px;" onclick="prefillFromPublished()">↓ 从已发布达人填入</button>
+      <button class="btn-ghost" style="font-size:12px;color:#ff3b30;" onclick="clearAllAnalysis()">清空结果</button>
+    </div>
+    <div id="fetch_progress" style="display:none;margin-top:12px;font-size:12px;color:var(--text-muted);padding:10px 14px;background:rgba(0,122,255,0.06);border-radius:10px;border:1px solid rgba(0,122,255,0.15);">
+      <span id="fetch_status">正在拉取数据...</span>
+    </div>
+  </div>
+
+  <!-- 结果展示 -->
+  ${withData.length === 0 ? `
+  <div class="glass card" style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">
+    <div style="font-size:28px;margin-bottom:10px;">📊</div>
+    分析结果会在这里展示<br>
+    <span style="font-size:11px;margin-top:6px;display:block;">先粘贴笔记 ID，点「发给 AI 分析」</span>
+  </div>
+  ` : `
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+    <div class="section-title" style="margin-bottom:0;">分析结果（${withData.length} 条）</div>
+    <div style="margin-left:auto;display:flex;gap:6px;">
+      ${['ctr','imp','playRate','fans'].map(k=>{
+        const label={'ctr':'CTR↓','imp':'曝光↓','playRate':'完播↓','fans':'涨粉↓'}[k];
+        const active = _sortBy===k;
+        return `<button onclick="setSort('${k}')" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid ${active?'rgba(0,122,255,0.5)':'rgba(0,0,0,0.1)'};background:${active?'rgba(0,122,255,0.1)':'rgba(255,255,255,0.6)'};color:${active?'#007aff':'var(--text-muted)'};cursor:pointer;font-weight:${active?'600':'400'};">${label}</button>`;
+      }).join('')}
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    ${withData.map(c => {
+      const a = c.analysis;
+      const d = diagnose(a);
+      const col = diagColor(a);
+      return `
+      <div class="glass card" style="padding:18px 20px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <div style="width:10px;height:10px;border-radius:50%;background:${col};flex-shrink:0;"></div>
+          <div style="font-weight:600;font-size:14px;">${c.name}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${a.type||''} · ${c.topic||a.title||''}</div>
+          <div style="margin-left:auto;">
+            <button class="btn-ghost" style="font-size:11px;padding:3px 8px;" onclick="clearAnalysis('${c.id}')">× 清除</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px;">
+          ${[['曝光',(a.imp||0).toLocaleString()],['CTR',(a.ctr||0)+'%'],['互动率',(a.ces||0)+'%'],['完播率',(a.playRate||0)+'%'],['涨粉率',d.fansRate+'%']].map(([l,v])=>`
+            <div style="background:rgba(255,255,255,0.5);border-radius:8px;padding:8px;text-align:center;">
+              <div style="font-size:11px;color:var(--text-muted);">${l}</div>
+              <div style="font-size:15px;font-weight:600;margin-top:2px;">${v}</div>
+            </div>
+          `).join('')}
+        </div>
+        <div style="font-size:12px;margin-bottom:10px;">
+          ${(a.tags||[]).map(t=>{
+            const color=t.startsWith('✅')?'#34c759':t.startsWith('⚠️')?'#ff3b30':'#ff9500';
+            return `<div style="color:${color};margin-bottom:3px;">${t}</div>`;
+          }).join('') || [
+            ...d.strong.map(s=>`<div style="color:#34c759;margin-bottom:3px;">✅ ${s}</div>`),
+            ...d.advice.map(s=>`<div style="color:#ff9500;margin-bottom:3px;">💡 ${s}</div>`),
+            ...d.issues.map(s=>`<div style="color:#ff3b30;margin-bottom:3px;">⚠️ ${s}</div>`)
+          ].join('')}
+        </div>
+        <div style="font-size:12px;background:rgba(0,0,0,0.04);border-radius:8px;padding:8px 12px;margin-bottom:${(a.templates||[]).length?'12px':'0'};">
+          🚀 ${a.invest || d.invest}
+        </div>
+        ${(a.templates||[]).length ? `
+        <div style="font-size:12px;font-weight:600;margin-bottom:6px;">📌 推荐沉淀</div>
+        ${(a.templates||[]).map((tpl,ti)=>`
+          <div style="display:flex;align-items:flex-start;gap:8px;background:rgba(255,255,255,0.5);border-radius:8px;padding:8px 12px;margin-bottom:6px;">
+            <div style="flex:1;font-size:12px;">
+              <span style="font-size:10px;padding:2px 6px;background:rgba(0,0,0,0.06);border-radius:4px;margin-right:6px;">${tpl.kind}</span>
+              ${tpl.name} · <span style="color:var(--text-muted);">${tpl.text.slice(0,50)}${tpl.text.length>50?'…':''}</span>
+            </div>
+            <button class="btn-ghost" style="font-size:11px;padding:4px 10px;white-space:nowrap;" onclick="saveTpl('${c.id}',${ti})">⭐ 入库</button>
+          </div>
+        `).join('')}
+        ` : ''}
+      </div>
+      `;
+    }).join('')}
+  </div>
+  `}
+</div>`;
+
+  window.mountShell(html);
+}
+
+// 直接拉取雅典娜数据并分析
+
+window.fetchAndAnalyze = async function() {
+  const raw = document.getElementById('ba_ids')?.value.trim();
+  if (!raw) { toast('请先输入 Note ID'); return; }
+  const ids = raw.split(/[\n\s,，]+/).map(s=>s.trim()).filter(s=>/^[a-f0-9]{24}$/.test(s));
+  if (!ids.length) { toast('未识别到有效 Note ID（24位十六进制）'); return; }
+
+  const btn = document.getElementById('btn_analyze');
+  const prog = document.getElementById('fetch_progress');
+  const status = document.getElementById('fetch_status');
+  btn.disabled = true; btn.textContent = '分析中...';
+  prog.style.display = 'block';
+  status.textContent = `正在拉取 0 / ${ids.length} 条笔记数据...`;
+
+  const results = [];
+  let done = 0;
+  await Promise.all(ids.map(async noteId => {
+    try {
+      const url = `https://athena-next.devops.xiaohongshu.com/web_api/sns/note/sidebar?note_id=${noteId}&_proxy_timeout=30000`;
+      const resp = await fetch(url, { credentials: 'include' });
+      const js = await resp.json();
+      const cards = js?.data?.note_cards || [];
+      if (!cards.length) { results.push({ noteId, error: 'no data' }); return; }
+      const card = cards[0];
+      const base = card.note_base_info || {};
+      const count = card.note_count_info || {};
+      const user = card.user_info || {};
+      const imp = count.imp_count || 0;
+      const fans = count.transfer_fans || 0;
+      const likes = count.like_count || 0;
+      const comments = count.comment_count || 0;
+      const collects = count.collect_count || 0;
+      const ctr = Math.round((count.ctr || 0) * 10000) / 100;
+      const playRate = count.play_num > 0 ? Math.round(count.good_play / count.play_num * 1000) / 10 : 0;
+      const cesRate = imp > 0 ? Math.round((likes+comments+collects)/imp*10000)/100 : 0;
+      const fansRate = imp > 0 ? Math.round(fans/imp*10000)/100 : 0;
+      const type = base.type === 1 ? '图文' : '视频';
+      const title = base.title || '';
+      const name = user.nick_name || noteId;
+
+      // 诊断规则
+      const tags = [];
+      if (ctr >= BENCH.ctr_good) tags.push(`✅ CTR ${ctr}% 强`);
+      else if (ctr >= BENCH.ctr_ok) tags.push(`💡 CTR ${ctr}% 合格`);
+      else tags.push(`⚠️ CTR ${ctr}% 偏低`);
+      if (cesRate >= BENCH.ces_good) tags.push(`✅ 互动率 ${cesRate}% 强`);
+      else if (cesRate >= BENCH.ces_ok) tags.push(`💡 互动率 ${cesRate}% 合格`);
+      else tags.push(`⚠️ 互动率 ${cesRate}% 偏低`);
+      if (type === '视频') {
+        if (playRate >= BENCH.play_good) tags.push(`✅ 完播 ${playRate}% 强`);
+        else if (playRate >= BENCH.play_ok) tags.push(`💡 完播 ${playRate}% 合格`);
+        else tags.push(`⚠️ 完播 ${playRate}% 偏低`);
+      }
+      if (fansRate >= BENCH.fans_good) tags.push(`✅ 涨粉率 ${fansRate}% 强`);
+      else if (fansRate >= BENCH.fans_ok) tags.push(`💡 涨粉率 ${fansRate}% 中`);
+      else tags.push(`⚠️ 涨粉率 ${fansRate}% 低`);
+
+      const goodCnt = tags.filter(t=>t.startsWith('✅')).length;
+      const badCnt = tags.filter(t=>t.startsWith('⚠️')).length;
+      let invest = badCnt >= 2 ? '先优化内容' : (goodCnt >= 2 ? '建议追投' : '小额测试');
+
+      // 标题模版候选
+      const templates = [];
+      if (ctr >= BENCH.ctr_good && title) templates.push({ kind:'标题', name:`高CTR标题·${name}`, text:title });
+
+      results.push({ noteId, name, title, type, imp, ctr, cesRate, playRate, fans, fansRate, tags, invest, templates });
+    } catch(e) {
+      results.push({ noteId, error: e.message });
+    } finally {
+      done++;
+      status.textContent = `正在拉取 ${done} / ${ids.length} 条笔记数据...`;
+    }
+  }));
+
+  // 写入 localStorage
+  const orphans = store.get('analysis_orphans', []);
+  const tpls = store.get('templates', { titles:[], scripts:[], ctas:[] });
+  let added = 0, tplAdded = 0;
+  results.filter(r=>!r.error).forEach(r => {
+    const idx = orphans.findIndex(o => o.noteId === r.noteId);
+    const entry = { noteId:r.noteId, name:r.name, title:r.title, type:r.type,
+      imp:r.imp, ctr:r.ctr, ces:r.cesRate, playRate:r.playRate, fans:r.fans, fansRate:r.fansRate,
+      invest:r.invest, tags:r.tags, templates:r.templates, updatedAt:new Date().toISOString() };
+    if (idx >= 0) orphans[idx] = entry; else { orphans.push(entry); added++; }
+    (r.templates||[]).forEach(t => {
+      const kind = t.kind==='标题'?'titles':t.kind==='口播'?'scripts':'ctas';
+      if (!(tpls[kind]||[]).some(x=>x.text===t.text)) {
+        tpls[kind] = [{name:t.name,text:t.text,id:Date.now()+Math.random(),_auto:true},...(tpls[kind]||[])];
+        tplAdded++;
+      }
+    });
+  });
+  store.set('analysis_orphans', orphans);
+  store.set('templates', tpls);
+
+  btn.disabled = false; btn.textContent = '⚡ 一键分析';
+  prog.style.display = 'none';
+  const ok = results.filter(r=>!r.error).length;
+  const fail = results.filter(r=>r.error).length;
+  toast(`完成！${ok} 条分析完成${fail ? `，${fail}条失败` : ''}${tplAdded ? `，${tplAdded}个标题入库` : ''}`);
+  render();
+};
+
+window.clearAllAnalysis = function() {
+  if (!confirm('确认清空所有分析结果？')) return;
+  store.set('analysis_orphans', []);
+  const collabs = store.get('collabs', []);
+  collabs.forEach(c => delete c.analysis);
+  store.set('collabs', collabs);
+  render();
+  toast('已清空');
+};
+
+window.sendToAI = function() { toast('现在直接点「一键分析」就行，不需要发给 AI'); };
+
+window.prefillFromPublished = function() {
+  const collabs = store.get('collabs', []);
+  const ids = collabs.filter(c => ['published','promoting'].includes(c.stage) && c.noteId).map(c=>c.noteId);
+  if (!ids.length) { toast('暂无已填写笔记ID的已发布达人'); return; }
+  document.getElementById('ba_ids').value = ids.join('\n');
+  toast(`已填入 ${ids.length} 个 Note ID`);
+};
+
+window.openImportJSON = function() {
+  document.getElementById('importModal').style.display = 'flex';
+};
+
+window.importResult = function() {
+  const raw = document.getElementById('ba_import')?.value.trim();
+  if (!raw) { toast('请先粘贴结果'); return; }
+  let data;
+  try { data = JSON.parse(raw); } catch(e) { toast('格式不对，让 AI 重新发一下'); return; }
+  const results = data.results || data;
+  const collabs = store.get('collabs', []);
+  const tpls = store.get('templates', { titles:[], scripts:[], ctas:[] });
+  let updated = 0, tplAdded = 0;
+  results.forEach(r => {
+    const c = collabs.find(x => (x.noteId && x.noteId === r.noteId) || x.name === r.name);
+    if (c) {
+      c.analysis = { imp:r.imp, ctr:r.ctr, ces:r.ces, playRate:r.playRate, fans:r.fans, type:r.type, title:r.title, templates:r.templates||[], updatedAt:new Date().toISOString() };
+      updated++;
+    } else {
+      // 没有匹配达人的，也新建一条分析记录挂到 analysis_orphans
+      const orphans = store.get('analysis_orphans', []);
+      orphans.push({ noteId:r.noteId, title:r.title, type:r.type, imp:r.imp, ctr:r.ctr, ces:r.ces, playRate:r.playRate, fans:r.fans, templates:r.templates||[], updatedAt:new Date().toISOString() });
+      store.set('analysis_orphans', orphans);
+      updated++;
+    }
+    (r.templates||[]).forEach(t => {
+      const kind = t.kind==='标题'?'titles':t.kind==='口播'?'scripts':'ctas';
+      if (!(tpls[kind]||[]).some(x=>x.text===t.text)) {
+        tpls[kind] = [{name:t.name||'自动沉淀',text:t.text,id:Date.now()+Math.random(),_auto:true},...(tpls[kind]||[])];
+        tplAdded++;
+      }
+    });
+  });
+  store.set('collabs', collabs);
+  store.set('templates', tpls);
+  toast(`已更新 ${updated} 条，入库 ${tplAdded} 个模版`);
+  document.getElementById('importModal').style.display = 'none';
+  render();
+};
+
+window.saveTpl = function(collabId, tplIdx) {
+  const collabs = store.get('collabs', []);
+  const c = collabs.find(x => x.id === collabId);
+  if (!c?.analysis) return;
+  const tpl = (c.analysis.templates||[])[tplIdx];
+  if (!tpl) return;
+  const tpls = store.get('templates', { titles:[], scripts:[], ctas:[] });
+  const kind = tpl.kind==='标题'?'titles':tpl.kind==='口播'?'scripts':'ctas';
+  if (!(tpls[kind]||[]).some(x=>x.text===tpl.text)) {
+    tpls[kind] = [{name:tpl.name,text:tpl.text,id:Date.now()+Math.random(),_auto:true,source:c.name,createdAt:Date.now()},...(tpls[kind]||[])];
+    store.set('templates', tpls);
+    toast('已入库 ✅  → <a href="./launch.html" style="color:#fff;text-decoration:underline">去工具中心查看</a>', 3500);
+    // 更新按钮状态
+    render();
+  } else { toast('该模版已在库中 · 去工具中心查看'); }
+};
+
+window.clearAnalysis = function(id) {
+  if (id.startsWith('orphan_')) {
+    const noteId = id.replace('orphan_', '');
+    const orphans = store.get('analysis_orphans', []).filter(o => o.noteId !== noteId);
+    store.set('analysis_orphans', orphans);
+  } else {
+    const collabs = store.get('collabs', []);
+    const c = collabs.find(x => x.id === id);
+    if (c) { delete c.analysis; store.set('collabs', collabs); }
+  }
+  render();
+};
+
+// 自动注入分析结果（由 AI 直接写入，无需手动粘贴）
+window._injectAnalysis = function(results) {
+  const orphans = store.get('analysis_orphans', []);
+  const tpls = store.get('templates', { titles:[], scripts:[], ctas:[] });
+  let added = 0, tplAdded = 0;
+  results.forEach(r => {
+    const exists = orphans.find(x => x.noteId === r.note_id);
+    if (!exists) {
+      orphans.push({ noteId:r.note_id, name:r.name, title:r.title, type:r.type,
+        imp:r.imp, ctr:r.ctr, ces:r.cesRate, playRate:r.playRate, fans:r.fans, fansRate:r.fansRate,
+        invest:r.invest, tags:r.tags, templates:r.templates||[], updatedAt:new Date().toISOString() });
+      added++;
+    }
+    (r.templates||[]).forEach(t => {
+      const kind = t.kind==='标题'?'titles':t.kind==='口播'?'scripts':'ctas';
+      if (!(tpls[kind]||[]).some(x=>x.text===t.text)) {
+        tpls[kind] = [{name:t.name||'自动沉淀',text:t.text,id:Date.now()+Math.random(),_auto:true},...(tpls[kind]||[])];
+        tplAdded++;
+      }
+    });
+  });
+  store.set('analysis_orphans', orphans);
+  store.set('templates', tpls);
+  return { added, tplAdded };
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+  render();
+});
+</script>
+</body>
+</html>

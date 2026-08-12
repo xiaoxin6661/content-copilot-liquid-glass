@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Content Copilot · 工具中心</title>
+  <link rel="stylesheet" href="./assets/style.css?v=2300">
+  <style>
+    .page-hero { padding: 22px 28px; margin-bottom: 16px; }
+    .page-hero h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin-bottom:4px; }
+    .page-hero .sub { font-size: 13px; color: var(--text-soft); }
+
+    /* 工具卡片网格 */
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .tool-card {
+      padding: 22px 24px;
+      border-radius: var(--r-lg);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      cursor: default;
+      transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
+    }
+    .tool-card:hover { transform: translateY(-2px); }
+
+    .tool-icon {
+      font-size: 28px;
+      line-height: 1;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08));
+    }
+    .tool-name {
+      font-size: 16px; font-weight: 700; letter-spacing: -0.01em;
+    }
+    .tool-desc {
+      font-size: 12px; color: var(--text-soft); line-height: 1.6;
+      flex: 1;
+    }
+    .tool-tags {
+      display: flex; gap: 6px; flex-wrap: wrap;
+    }
+    .tool-tag {
+      font-size: 10px; padding: 2px 8px; border-radius: 999px;
+      background: rgba(255,255,255,0.6); color: var(--text-soft);
+      border: 1px solid rgba(0,0,0,0.07); letter-spacing: 0.03em;
+    }
+    .tool-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 4px;
+    }
+    .tool-open {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 7px 16px; border-radius: 999px;
+      font-size: 12px; font-weight: 600; letter-spacing: 0.03em;
+      text-decoration: none; color: inherit;
+      background: rgba(255,255,255,0.7);
+      border: 1px solid rgba(0,0,0,0.08);
+      transition: background 0.2s, transform 0.2s;
+    }
+    .tool-open:hover {
+      background: rgba(255,255,255,0.95);
+      transform: translateX(2px);
+    }
+    .tool-source {
+      font-size: 10px; color: var(--text-faint); letter-spacing: 0.04em;
+    }
+
+    /* 自定义添加卡 */
+    .tool-card.add-card {
+      border: 2px dashed rgba(0,0,0,0.1);
+      background: rgba(255,255,255,0.25);
+      align-items: center; justify-content: center;
+      text-align: center; gap: 8px;
+      min-height: 160px;
+    }
+    .add-card-inner { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .add-card-plus { font-size: 28px; color: rgba(0,0,0,0.18); line-height:1; }
+    .add-card-label { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+    .add-card-sub { font-size: 11px; color: var(--text-faint); }
+    .add-form { display:none; flex-direction:column; gap:8px; width:100%; }
+    .add-form.open { display:flex; }
+    .add-form input {
+      padding: 7px 10px; font-size: 12px; font-family: inherit;
+      border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;
+      background: rgba(255,255,255,0.9);
+    }
+    .add-form-btns { display:flex; gap:8px; }
+
+    /* 模版库区 */
+    .section { padding: 22px 26px; margin-bottom: 16px; }
+    .section-title-lg {
+      font-size:16px; font-weight:600; letter-spacing: 0.01em;
+      margin-bottom:14px; display:flex; align-items:center; justify-content:space-between;
+    }
+    .tpl-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+    .tpl-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+    .tpl-card {
+      padding: 14px 16px; border-radius: var(--r-md);
+      background: rgba(255,255,255,0.55); border: 1px solid rgba(0,0,0,0.06);
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .tpl-card .head { display:flex; align-items:center; justify-content:space-between; }
+    .tpl-card .type {
+      font-size: 10px; padding: 2px 8px; border-radius: 999px;
+      background: rgba(200,220,255,0.35); color: rgba(30,80,150,1);
+      letter-spacing: 0.04em; font-weight: 600;
+    }
+    .tpl-badge {
+      font-size:10px; padding: 2px 7px; border-radius:999px;
+      background: rgba(255,200,120,0.3); color: rgba(160,90,20,1);
+      font-weight:600; letter-spacing:0.03em;
+    }
+    .tpl-card .text { font-size: 13px; line-height: 1.55; color: var(--text); }
+    .tpl-card .meta { font-size: 11px; color: var(--text-muted); }
+    .tpl-card .actions { display:flex; gap:6px; justify-content:flex-end; }
+    .tpl-empty { text-align:center; padding: 32px 0; color: var(--text-muted); font-size:13px; }
+    .tpl-empty .te-sub { font-size:11px; margin-top:6px; }
+  </style>
+  <script src="./assets/main.js?v=2300"></script>
+</head>
+<body>
+
+  <script src="./assets/data.js"></script>
+  <script>
+    // ======= 工具列表（默认内置，可本地追加）=======
+    const DEFAULT_TOOLS = [
+      {
+        id: 'kos-patrol',
+        icon: '🔍',
+        name: '笔记巡查',
+        desc: '中台笔记负向监控系统。对数据库中的笔记执行实时负向检测，支持近 7 / 14 / 28 / 60 天范围。',
+        tags: ['负向监控', '笔记管理', '创新运营中台'],
+        url: 'https://cowork.xiaohongshu.com/s/kos-patrol-app/',
+        source: 'Cowork 内部工具',
+        accent: 'rgba(120,180,255,0.18)',
+        border: 'rgba(120,180,255,0.3)',
+      },
+      {
+        id: 'hard-ad-filter',
+        icon: '📁',
+        name: '硬保筛选工具',
+        desc: '硬保笔记批量筛选工具，快速定位适合投放的达人笔记。',
+        tags: ['硬保', '笔记筛选', '投放辅助'],
+        url: 'https://cowork.xiaohongshu.com/s/hard-ad-filter/',
+        source: 'Cowork 内部工具',
+        accent: 'rgba(255,200,120,0.15)',
+        border: 'rgba(255,180,80,0.25)',
+      },
+      {
+        id: 'pocket-invest',
+        icon: '🚀',
+        name: '投流配置',
+        desc: 'Pocket 投流任务配置中心，快速创建和管理笔记投放计划。',
+        tags: ['投流', '投放配置', 'Pocket'],
+        url: 'https://pocket.devops.xiaohongshu.com/subapp/flow/invest/config',
+        source: '内部工具',
+        accent: 'rgba(180,140,255,0.15)',
+        border: 'rgba(160,100,255,0.25)',
+      },
+      {
+        id: 'athena-note-search',
+        icon: '🔎',
+        name: '雅典娜笔记搜索',
+        desc: '内部笔记数据检索平台，按关键词/作者/时间搜索笔记及数据表现。',
+        tags: ['笔记搜索', '数据查询', '雅典娜'],
+        url: 'https://athena-next.devops.xiaohongshu.com/athenanextuser/note-search',
+        source: '内部工具',
+        accent: 'rgba(120,220,180,0.15)',
+        border: 'rgba(80,180,140,0.25)',
+      },
+    ];
+
+    const STORE_KEY = 'cc_tools';
+
+    function loadTools() {
+      const saved = localStorage.getItem(STORE_KEY);
+      const custom = saved ? JSON.parse(saved) : [];
+      return [...DEFAULT_TOOLS, ...custom];
+    }
+
+    function saveCustomTools(tools) {
+      const custom = tools.filter(t => !DEFAULT_TOOLS.find(d => d.id === t.id));
+      localStorage.setItem(STORE_KEY, JSON.stringify(custom));
+    }
+
+    let tools = loadTools();
+    let showAddForm = false;
+
+    window.toggleAddForm = function() {
+      showAddForm = !showAddForm;
+      render();
+      if (showAddForm) setTimeout(() => document.getElementById('add_name')?.focus(), 50);
+    };
+
+    window.saveNewTool = function() {
+      const name = document.getElementById('add_name')?.value.trim();
+      const url  = document.getElementById('add_url')?.value.trim();
+      const desc = document.getElementById('add_desc')?.value.trim();
+      if (!name || !url) { toast('请填写工具名称和链接'); return; }
+      const newTool = {
+        id: 'custom_' + Date.now(),
+        icon: '🔧',
+        name,
+        desc: desc || '自定义工具',
+        tags: ['自定义'],
+        url,
+        source: '自定义添加',
+        accent: 'rgba(200,200,200,0.18)',
+        border: 'rgba(180,180,180,0.2)',
+      };
+      tools.push(newTool);
+      saveCustomTools(tools);
+      showAddForm = false;
+      toast('✓ 工具已添加');
+      render();
+    };
+
+    window.removeTool = function(id) {
+      if (!confirm('确认删除这个工具？')) return;
+      tools = tools.filter(t => t.id !== id);
+      saveCustomTools(tools);
+      toast('已删除');
+      render();
+    };
+
+    // ======= 模版库 =======
+    // 从 localStorage 读（笔记分析入库的数据在这里），merge 静态默认数据
+    function getTemplates() {
+      const saved = store.get('templates', null);
+      const def = window.CC_DATA.templates;
+      const banned = store.get('tpl_banned', []);
+      function notBanned(d) { return !banned.includes(d.text); }
+      if (!saved) return {
+        titles: (def.titles||[]).filter(notBanned),
+        scripts: (def.scripts||[]).filter(notBanned),
+        ctas: (def.ctas||[]).filter(notBanned),
+      };
+      return {
+        titles:  [...(saved.titles  || []), ...(def.titles  || []).filter(d => notBanned(d) && !(saved.titles  ||[]).some(s=>s.text===d.text))],
+        scripts: [...(saved.scripts || []), ...(def.scripts || []).filter(d => notBanned(d) && !(saved.scripts ||[]).some(s=>s.text===d.text))],
+        ctas:    [...(saved.ctas    || []), ...(def.ctas    || []).filter(d => notBanned(d) && !(saved.ctas    ||[]).some(s=>s.text===d.text))],
+      };
+    }
+    let tplTab = 'titles';
+    const tplTabs = [
+      { k: 'titles',  name: '📝 标题模版',  hint: '从爆款标题沉淀' },
+      { k: 'scripts', name: '💬 口播话术',   hint: '从高完播脚本沉淀' },
+      { k: 'ctas',    name: '🎯 结尾钩子',   hint: '拉关注/收藏/私信' },
+    ];
+    window.setTpl = function(k) { tplTab = k; render(); };
+
+    function tplCard(item, kind) {
+      const src = item.source ? `来自达人·${item.source}` : (item.from ? `来自 ${item.from.join('、')}` : '');
+      const delBtn = `<button class="btn-ghost" style="color:rgba(200,60,60,0.7);font-size:11px;" onclick='deleteTpl("${kind}",${JSON.stringify(item.id||item.text)})'>× 删除</button>`;
+      const srcTag = item.source ? `<span class="tpl-badge" style="background:rgba(99,102,241,0.12);color:rgba(79,70,229,1);">笔记分析</span>` : '';
+      if (kind === 'titles') return `
+        <div class="tpl-card">
+          <div class="head">
+            <span class="type">${item.type||item.name||'标题'}</span>
+            ${item.badge ? `<span class="tpl-badge">${item.badge}</span>` : srcTag}
+          </div>
+          <div class="text">${item.text}</div>
+          ${src ? `<div class="meta">${src}${item.avgLikes ? ` · 平均 <b>${item.avgLikes.toLocaleString()} 赞</b>` : ''}</div>` : ''}
+          <div class="actions"><button class="btn-ghost" onclick='copyText(${JSON.stringify(item.text)}, "标题已复制")'>📋 复制</button>${delBtn}</div>
+        </div>`;
+      if (kind === 'scripts') return `
+        <div class="tpl-card">
+          <div class="head"><span class="type">${item.name||'话术'}</span>${srcTag}</div>
+          <div class="text">${item.text}</div>
+          ${src ? `<div class="meta">${src}</div>` : ''}
+          <div class="actions"><button class="btn-ghost" onclick='copyText(${JSON.stringify(item.text)}, "话术已复制")'>📋 复制</button>${delBtn}</div>
+        </div>`;
+      if (kind === 'ctas') return `
+        <div class="tpl-card">
+          <div class="head">
+            <span class="type">${item.name||'结尾钩子'}</span>
+            ${item.suit ? `<span class="tpl-badge" style="background:rgba(120,220,180,0.22);color:rgba(20,120,80,1);">${item.suit}</span>` : srcTag}
+          </div>
+          <div class="text">${item.text}</div>
+          ${src ? `<div class="meta">${src}</div>` : ''}
+          <div class="actions"><button class="btn-ghost" onclick='copyText(${JSON.stringify(item.text)}, "钩子已复制")'>📋 复制</button>${delBtn}</div>
+        </div>`;
+      return '';
+    }
+
+    // ======= 渲染 =======
+    function render() {
+      const toolCards = tools.map(t => `
+        <div class="glass tool-card panel-hover" style="border-color:${t.border||''}; background: linear-gradient(135deg, rgba(255,255,255,0.72), ${t.accent||'rgba(240,240,255,0.18)'});">
+          <div class="tool-icon">${t.icon}</div>
+          <div class="tool-name">${t.name}</div>
+          <div class="tool-desc">${t.desc}</div>
+          <div class="tool-tags">${(t.tags||[]).map(tag => `<span class="tool-tag">${tag}</span>`).join('')}</div>
+          <div class="tool-footer">
+            <a class="tool-open" href="${t.url}" target="_blank" rel="noopener">打开工具 ↗</a>
+            <span class="tool-source">${t.source||''}</span>
+            ${!DEFAULT_TOOLS.find(d=>d.id===t.id) ? `<button class="btn-ghost" style="font-size:10px;padding:3px 8px;" onclick="removeTool('${t.id}')">删除</button>` : ''}
+          </div>
+        </div>
+      `).join('');
+
+      const addCard = `
+        <div class="glass tool-card add-card panel-hover" onclick="${!showAddForm ? 'toggleAddForm()' : ''}">
+          ${showAddForm ? `
+            <div class="add-form open" onclick="event.stopPropagation()">
+              <input id="add_name" placeholder="工具名称（如：投流平台）">
+              <input id="add_url"  placeholder="链接（https://...）">
+              <input id="add_desc" placeholder="简短描述（可选）">
+              <div class="add-form-btns">
+                <button class="btn-ghost" onclick="toggleAddForm()">取消</button>
+                <button class="btn-primary" onclick="saveNewTool()">保存</button>
+              </div>
+            </div>
+          ` : `
+            <div class="add-card-inner">
+              <div class="add-card-plus">＋</div>
+              <div class="add-card-label">添加工具</div>
+              <div class="add-card-sub">粘贴内部链接，一键直达</div>
+            </div>
+          `}
+        </div>
+      `;
+
+      const curTab = tplTabs.find(t => t.k === tplTab);
+      const T = getTemplates();
+      const curItems = T[tplTab] || [];
+      const tplSection = `
+        <div class="glass section panel-hover">
+          <div class="section-title-lg">
+            <span>📚 模版库</span>
+            <button class="btn-ghost" style="font-size:11px;padding:3px 10px;" onclick="openAddTpl()">＋ 手动添加</button>
+          </div>
+          <div class="tpl-tabs">
+            ${tplTabs.map(t => `<button class="chip-btn ${tplTab===t.k?'on':''}" onclick="setTpl('${t.k}')">${t.name} ${T[t.k]?.length||0}</button>`).join('')}
+          </div>
+          <div class="tpl-grid">
+            ${curItems.length
+              ? curItems.map(x => tplCard(x, tplTab)).join('')
+              : `<div class="tpl-empty">
+                  <div>还没有${curTab.name.replace(/[📝💬🎯]/g,'')}模版</div>
+                  <div class="te-sub">在「达人管理」审稿完成后点「⭐ 沉淀模版」，好内容自动入库</div>
+                </div>`
+            }
+          </div>
+        </div>
+      `;
+
+      const html = `
+        <div class="glass page-hero panel-hover">
+          <h1>🛠️ 工具中心</h1>
+          <div class="sub">常用内部工具快速直达 · 模版库从审稿复盘沉淀</div>
+        </div>
+        <div class="tool-grid">${toolCards}${addCard}</div>
+        ${tplSection}
+      `;
+      window.mountShell(html);
+
+      // 模版库手动添加弹窗（每次 render 后重新注入）
+      if (!document.getElementById('addTplModal')) {
+        const m = document.createElement('div');
+        m.id = 'addTplModal';
+        m.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.25);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;';
+        m.style.display = 'none';
+        m.innerHTML = `
+          <div class="glass" style="width:480px;padding:28px 24px;border-radius:20px;">
+            <h3 style="margin:0 0 16px;font-size:16px;">手动添加模版</h3>
+            <div class="form-group" style="margin-bottom:10px;">
+              <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">类型</label>
+              <select id="atpl_kind" style="width:100%;padding:8px 12px;border-radius:10px;border:1px solid rgba(0,0,0,0.1);background:rgba(255,255,255,0.7);font-size:13px;">
+                <option value="titles">📝 标题模版</option>
+                <option value="scripts">💬 口播话术</option>
+                <option value="ctas">🎯 结尾钓子</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:10px;">
+              <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">标题/名称</label>
+              <input id="atpl_name" placeholder="如：数字堆叠类" style="width:100%;padding:8px 12px;border-radius:10px;border:1px solid rgba(0,0,0,0.1);background:rgba(255,255,255,0.7);font-size:13px;box-sizing:border-box;">
+            </div>
+            <div class="form-group" style="margin-bottom:16px;">
+              <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">内容</label>
+              <textarea id="atpl_text" rows="4" placeholder="输入模版内容..." style="width:100%;padding:8px 12px;border-radius:10px;border:1px solid rgba(0,0,0,0.1);background:rgba(255,255,255,0.7);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+              <button class="btn-ghost" onclick="closeAddTpl()"> 关闭</button>
+              <button class="btn-primary" onclick="saveAddTpl()"> 保存</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(m);
+      }
+    }
+
+    window.openAddTpl = function() {
+      const m = document.getElementById('addTplModal');
+      if (m) { m.style.display = 'flex'; document.getElementById('atpl_text').focus(); }
+    };
+    window.closeAddTpl = function() {
+      const m = document.getElementById('addTplModal');
+      if (m) m.style.display = 'none';
+    };
+    window.saveAddTpl = function() {
+      const kind = document.getElementById('atpl_kind').value;
+      const name = document.getElementById('atpl_name').value.trim();
+      const text = document.getElementById('atpl_text').value.trim();
+      if (!text) { toast('请先填写内容'); return; }
+      const tpls = store.get('templates', { titles:[], scripts:[], ctas:[] });
+      const newItem = kind === 'titles'
+        ? { type: name||'自定义', text, from:['手动添加'], avgLikes: 0, badge:'手动', _manual:true, id: Date.now() }
+        : kind === 'scripts'
+        ? { name: name||'自定义', text, from:['手动添加'], _manual:true, id: Date.now() }
+        : { name: name||'自定义', text, suit:'通用', _manual:true, id: Date.now() };
+      tpls[kind] = [newItem, ...(tpls[kind]||[])];
+      store.set('templates', tpls);
+      closeAddTpl();
+      toast('模版已添加');
+      render();
+    };
+    window.deleteTpl = function(kind, idOrText) {
+      if (!confirm('确认删除这个模版？')) return;
+      const tpls = store.get('templates', { titles:[], scripts:[], ctas:[] });
+      // 先尝试从 localStorage 删除
+      const before = (tpls[kind]||[]).length;
+      tpls[kind] = (tpls[kind]||[]).filter(x => x.id !== idOrText && x.text !== idOrText);
+      if (tpls[kind].length < before) {
+        store.set('templates', tpls);
+      } else {
+        // 是静态数据，加入黑名单
+        const banned = store.get('tpl_banned', []);
+        if (!banned.includes(idOrText)) banned.push(idOrText);
+        store.set('tpl_banned', banned);
+      }
+      toast('已删除');
+      render();
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+      render();
+    });
+  </script>
+</body>
+</html>

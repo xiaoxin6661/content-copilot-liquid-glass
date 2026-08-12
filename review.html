@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Content Copilot · 内容审核</title>
+  <link rel="stylesheet" href="./assets/style.css?v=2400">
+  <style>
+    /* review v2 特定样式（仅本页） */
+    .review-header {
+      padding: 22px 28px; margin-bottom: 16px;
+    }
+    .review-header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+    .review-header .sub { font-size: 13px; color: var(--text-soft); margin-top:4px; }
+    .review-header .sub b { color: var(--text); font-weight: 600; }
+
+    .step-block {
+      padding: 22px 24px; margin-bottom: 16px;
+    }
+    .step-tag {
+      display:inline-flex; align-items:center; gap:6px;
+      font-size:11px; letter-spacing:0.08em; text-transform:uppercase;
+      color:var(--text-muted); margin-bottom:6px;
+    }
+    .step-tag::before {
+      content:""; width:6px; height:6px; border-radius:50%;
+      background: rgba(120,220,180,0.9); box-shadow: 0 0 8px rgba(120,220,180,0.6);
+    }
+    .step-title { font-size:18px; font-weight:700; letter-spacing:-0.01em; margin-bottom: 12px; }
+
+    /* Step1 合规 */
+    .compliance-head {
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 16px 20px; border-radius: var(--r-md);
+      background: rgba(255,255,255,0.5); border:1px solid rgba(0,0,0,0.06);
+      margin-bottom: 12px;
+    }
+    .compliance-head.pass { background: rgba(120,220,180,0.15); border-color: rgba(120,220,180,0.35); }
+    .compliance-head.fail { background: rgba(255,150,150,0.12); border-color: rgba(255,150,150,0.3); }
+    .compliance-verdict { font-size:24px; font-weight:800; letter-spacing:-0.02em; }
+    .compliance-count { font-size:13px; color:var(--text-soft); }
+
+    .compliance-list { display:flex; flex-direction:column; gap:8px; }
+    .compliance-item {
+      padding: 12px 16px; border-radius: var(--r-sm);
+      border: 1px solid rgba(0,0,0,0.06);
+      display:flex; gap: 12px; align-items:start;
+    }
+    .compliance-item.pass { background: rgba(120,220,180,0.10); border-color: rgba(120,220,180,0.25); }
+    .compliance-item.fail { background: rgba(255,180,120,0.10); border-color: rgba(255,180,120,0.3); }
+    .ci-ico { flex-shrink:0; font-size:16px; line-height:1.4; }
+    .ci-body { flex:1; }
+    .ci-label { font-size:13px; font-weight:600; margin-bottom: 3px; }
+    .ci-hint { font-size:12px; color: var(--text-soft); line-height:1.5; }
+    .ci-fix {
+      margin-top: 6px; padding: 8px 10px;
+      background: rgba(255,255,255,0.7); border-left: 2px solid rgba(255,150,80,0.6);
+      font-size:12px; color: var(--text); line-height: 1.55;
+      border-radius: 4px;
+    }
+    .ci-fix::before { content: "🔧 修复"; font-size:10px; color: rgba(160,90,20,1); font-weight: 600; letter-spacing:0.04em; display:block; margin-bottom:2px; }
+
+    /* Step2 潜力 */
+    .potential-card {
+      padding: 18px 22px; border-radius: var(--r-md);
+      display:flex; align-items:center; justify-content:space-between; gap: 20px;
+      margin-bottom: 14px; border: 1px solid rgba(0,0,0,0.08);
+    }
+    .potential-card.hot { background: linear-gradient(90deg, rgba(255,200,120,0.18), rgba(255,150,180,0.18)); border-color: rgba(255,150,180,0.35); }
+    .potential-card.good { background: rgba(200,220,255,0.18); border-color: rgba(120,180,255,0.35); }
+    .potential-card.warn { background: rgba(255,220,150,0.18); border-color: rgba(255,180,80,0.35); }
+    .potential-title { font-size:22px; font-weight:800; letter-spacing:-0.01em; }
+    .potential-desc { font-size:12px; color:var(--text-soft); margin-top:4px; }
+
+    .element-grid {
+      display:grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    }
+    .element-card {
+      padding: 16px 18px; border-radius: var(--r-md);
+      background: rgba(255,255,255,0.55); border:1px solid rgba(0,0,0,0.06);
+      display:flex; flex-direction:column; gap: 8px;
+    }
+    .el-head { display:flex; align-items:center; justify-content:space-between; }
+    .el-name { font-size:14px; font-weight:600; }
+    .el-badge {
+      font-size:11px; padding: 2px 9px; border-radius:999px; font-weight:700;
+      letter-spacing:0.05em;
+    }
+    .el-badge.A { background: rgba(120,220,180,0.25); color: rgba(20,120,80,0.95); }
+    .el-badge.B { background: rgba(200,220,255,0.35); color: rgba(30,80,150,1); }
+    .el-badge.C { background: rgba(255,180,120,0.3); color: rgba(180,80,20,1); }
+    .el-diag { font-size:12px; color:var(--text-soft); line-height:1.55; }
+    .el-fix {
+      padding: 10px 12px; border-radius: 8px;
+      background: rgba(200,220,255,0.15); border: 1px solid rgba(120,180,255,0.25);
+      font-size:12px; color: var(--text); line-height:1.6; white-space: pre-line;
+    }
+    .el-fix::before {
+      content: "💡 改写建议"; font-size:10px; color: rgba(30,80,150,0.95); font-weight:600;
+      letter-spacing:0.05em; display:block; margin-bottom:4px;
+    }
+    .title-suggests { display:flex; flex-direction:column; gap:6px; }
+    .title-sug {
+      padding: 8px 10px; background: rgba(255,255,255,0.7); border-radius: 6px;
+      border-left: 2px solid rgba(120,180,255,0.6);
+      font-size:12px;
+    }
+    .title-sug small { color: var(--text-muted); font-size:10px; letter-spacing:0.05em; text-transform:uppercase; margin-right:6px; }
+
+    /* form 精简 */
+    .compact-form { padding: 22px 24px; }
+    .compact-form .form-group { margin-bottom: 14px; }
+    .compact-form textarea { min-height: 200px; font-family: inherit; line-height:1.6; }
+    .type-toggle { display:flex; gap:8px; }
+    .type-btn {
+      flex:1; padding:12px; border-radius: var(--r-sm); cursor:pointer;
+      background: rgba(255,255,255,0.55); border: 1px solid rgba(0,0,0,0.08);
+      font-size:13px; color: var(--text-soft); text-align:center;
+      transition: all 0.25s var(--ease);
+    }
+    .type-btn.on { background: rgba(0,0,0,0.9); color:#fff; border-color: rgba(0,0,0,0.9); }
+    .type-btn:hover:not(.on) { background: rgba(255,255,255,0.85); color: var(--text); }
+
+    .empty-state {
+      text-align:center; padding: 80px 20px; color: var(--text-muted); font-size:14px;
+    }
+    .empty-state .big { font-size: 42px; margin-bottom: 12px; }
+    .empty-state .sub-line { font-size:12px; margin-top: 8px; }
+
+    /* 模版建议块（审稿页内嵌） */
+    .tpl-suggest-block { margin-top: 18px; padding-top: 14px; border-top: 1px dashed rgba(0,0,0,0.1); }
+    .tpl-group { margin-top: 10px; }
+    .tpl-group-title { font-size: 12px; font-weight: 600; color: var(--text-soft); margin-bottom: 6px; letter-spacing: 0.03em; }
+    .tpl-grid-mini { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .tpl-suggest-block .tpl-card {
+      padding: 10px 12px; border-radius: 10px;
+      background: rgba(255,255,255,0.55); border: 1px solid rgba(0,0,0,0.06);
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    .tpl-suggest-block .tpl-card .head { display: flex; align-items: center; justify-content: space-between; }
+    .tpl-suggest-block .tpl-card .type {
+      font-size: 10px; padding: 2px 7px; border-radius: 999px;
+      background: rgba(200,220,255,0.35); color: rgba(30,80,150,1); letter-spacing: 0.04em; font-weight: 600;
+    }
+    .tpl-suggest-block .tpl-card .text { font-size: 12px; line-height: 1.5; color: var(--text); }
+    .tpl-suggest-block .tpl-card .meta { font-size: 10px; color: var(--text-muted); }
+    .tpl-suggest-block .tpl-card .actions { display: flex; justify-content: flex-end; }
+    .tpl-suggest-block .tpl-badge {
+      font-size:10px; padding: 2px 7px; border-radius:999px;
+      background: rgba(255,200,120,0.3); color: rgba(160,90,20,1); font-weight:600; letter-spacing:0.03em;
+    }
+    @media (max-width: 900px) {
+      .tpl-grid-mini { grid-template-columns: 1fr; }
+    }
+  </style>
+  <script src="./assets/main.js?v=2400"></script>
+</head>
+<body>
+  <script src="./assets/data.js"></script>
+  <script src="./assets/brief-import.js"></script>
+  <script src="./assets/review.js"></script>
+  <script>
+    const samples = {
+      video: {
+        type: 'video',
+        title: '不情不愿的我 是怎么爱上跑步的',
+        copy: '开始跑步之后 Sig 每次都会给我实时反馈，跑完看到心情日记和月报，第一次觉得数据也可以那么可爱。@Sigma #Sigma #Sigma跑步',
+      },
+      image: {
+        type: 'image',
+        title: '减脂 21 天｜校园跑量赛 D8 我瘦了 3 斤',
+        copy: 'Sigma 是我最近挖到的宝藏跑步 app～无广告超清爽，AI 搭子 Sig 结合北体大知识库给我制定了减脂计划。今天跑完看到消耗了一根香蕉的热量成就感直接拉满！校园跑量赛真的太好玩了，跑 1 公里就能抽装备。@Sigma #Sigma #Sigma跑步',
+      },
+    };
+    let form = JSON.parse(JSON.stringify(samples.video));
+    let result = null;
+
+    function escapeHtml(s) { return (s||'').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+    function renderForm() {
+      return `
+      <div class="section-title" style="margin-bottom:14px;">📝 笔记内容</div>
+
+      <div class="form-group">
+        <label>笔记类型</label>
+        <div class="type-toggle">
+          <button class="type-btn ${form.type==='video'?'on':''}" onclick="setType('video')">🎬 视频笔记</button>
+          <button class="type-btn ${form.type==='image'?'on':''}" onclick="setType('image')">🖼️ 图文笔记</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>笔记标题</label>
+        <input id="f_title" value="${escapeHtml(form.title||'')}" placeholder="填写你的笔记标题">
+      </div>
+
+      <div class="form-group">
+        <label>正文全文（含话题、@、置顶评论）</label>
+        <textarea id="f_copy" placeholder="把完整正文贴进来，包括 #话题 和 @Sigma">${escapeHtml(form.copy||'')}</textarea>
+        <div class="form-hint">📌 只填 3 项：AI 会自动识别话题、@、AI Sig 提及、字数、植入深度、场景词等</div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+        <button class="btn-primary" onclick="runReview()">🤖 开始审稿</button>
+        <button class="btn-ghost" onclick="loadSample()">载入示例</button>
+        ${result ? '<button class="btn-ghost" onclick="sendFeedback()">📤 发反馈给达人</button>' : ''}
+      </div>
+      `;
+    }
+
+    function renderStep1(s1) {
+      const cls = s1.pass ? 'pass' : 'fail';
+      return `
+        <div class="glass step-block panel-hover">
+          <div class="step-tag">STEP 1 · Brief 合规质检</div>
+          <div class="step-title">是否符合 Brief 硬性植入要求</div>
+          <div class="compliance-head ${cls}">
+            <div>
+              <div class="compliance-verdict">${s1.pass ? '✅ 合规' : '❌ 不合规'}</div>
+              <div class="compliance-count">${s1.passCount}/${s1.total} 条通过</div>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);letter-spacing:0.05em;text-align:right;">
+              ${s1.pass ? '可以进入内容质量评估' : '请先修复必扣项，再评估爆款潜力'}
+            </div>
+          </div>
+          <div class="compliance-list">
+            ${s1.items.map(i => `
+              <div class="compliance-item ${i.pass?'pass':'fail'}">
+                <div class="ci-ico">${i.pass?'✅':'❌'}</div>
+                <div class="ci-body">
+                  <div class="ci-label">${i.label}</div>
+                  <div class="ci-hint">${i.hint}</div>
+                  ${i.fix ? `<div class="ci-fix">${escapeHtml(i.fix).replace(/\n/g,'<br>')}</div>` : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderElementCard(name, el, extra) {
+      let fixBlock = '';
+      if (el.rewrite) {
+        if (Array.isArray(el.rewrite)) {
+          fixBlock = `<div class="el-fix"><div class="title-suggests">${el.rewrite.map(r => `<div class="title-sug"><small>${r.type}</small>${escapeHtml(r.text)}</div>`).join('')}</div></div>`;
+        } else {
+          fixBlock = `<div class="el-fix">${escapeHtml(el.rewrite).replace(/\n/g,'<br>')}</div>`;
+        }
+      }
+      return `
+        <div class="element-card">
+          <div class="el-head">
+            <div class="el-name">${name}</div>
+            <div class="el-badge ${el.score}">${el.score}</div>
+          </div>
+          <div class="el-diag">${el.diagnosis}${extra || ''}</div>
+          ${fixBlock}
+        </div>
+      `;
+    }
+
+    function renderStep2(s2, s1) {
+      const gray = !s1.pass;
+      return `
+        <div class="glass step-block panel-hover" style="${gray?'opacity:0.6;':''}">
+          <div class="step-tag">STEP 2 · 内容爆款潜力评估</div>
+          <div class="step-title">是否是一篇有爆款潜力的好内容</div>
+
+          <div class="potential-card ${s2.potentialColor}">
+            <div>
+              <div class="potential-title">${s2.potential}</div>
+              <div class="potential-desc">${s2.potentialDesc}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:11px;color:var(--text-muted);letter-spacing:0.05em;">A 级要素</div>
+              <div style="font-size:26px;font-weight:800;letter-spacing:-0.02em;">${s2.aCount}<span style="font-size:14px;color:var(--text-muted);font-weight:500;">/4</span></div>
+            </div>
+          </div>
+
+          <div class="element-grid">
+            ${renderElementCard('🎣 标题钩子', s2.hook,
+              s2.hook.types.length ? `<br><span style="color:var(--text-muted);font-size:11px;">参考：${s2.hook.types.map(t=>t.example).join(' · ')}</span>` : '')}
+            ${renderElementCard('📍 植入深度 ' + s2.embed.level, s2.embed, '')}
+            ${renderElementCard('🎨 场景化程度', s2.scene,
+              s2.scene.hits.length ? `<br><span style="color:var(--text-muted);font-size:11px;">已用：${s2.scene.hits.join('、')}</span>` : '')}
+            ${renderElementCard('💫 情绪/干货感', s2.vibe, '')}
+          </div>
+
+          ${renderTemplateSuggests(s2)}
+        </div>
+      `;
+    }
+
+    // 模版卡片渲染
+    function tplCard(item, kind) {
+      if (kind === 'titles') return `
+        <div class="tpl-card">
+          <div class="head">
+            <span class="type">${item.type}</span>
+            ${item.badge?`<span class="tpl-badge">${item.badge}</span>`:''}
+          </div>
+          <div class="text">${item.text}</div>
+          <div class="meta">来自案 ${item.from.join('、')} · 平均 <b>${item.avgLikes.toLocaleString()} 赞</b></div>
+          <div class="actions"><button class="btn-ghost" onclick='copyText(${JSON.stringify(item.text)}, "标题已复制")'>📋 复制</button></div>
+        </div>`;
+      if (kind === 'scripts') return `
+        <div class="tpl-card">
+          <div class="head"><span class="type">${item.name}</span></div>
+          <div class="text">${item.text}</div>
+          <div class="meta">来自案 ${item.from.join('、')}</div>
+          <div class="actions"><button class="btn-ghost" onclick='copyText(${JSON.stringify(item.text)}, "话术已复制")'>📋 复制</button></div>
+        </div>`;
+      if (kind === 'ctas') return `
+        <div class="tpl-card">
+          <div class="head">
+            <span class="type">${item.name}</span>
+            <span class="tpl-badge" style="background:rgba(120,220,180,0.22);color:rgba(20,120,80,1);">${item.suit}</span>
+          </div>
+          <div class="text">${item.text}</div>
+          <div class="actions"><button class="btn-ghost" onclick='copyText(${JSON.stringify(item.text)}, "钩子话术已复制")'>📋 复制</button></div>
+        </div>`;
+      return '';
+    }
+
+    // 根据审稿结果（植入深度 embed.level + 意图）推荐 3-4 条模版
+    function suggestTemplates(r) {
+      const T = window.CC_DATA.templates;
+      const picks = [];
+      // 标题：根据命中钩子类型选 3 条；若一个都未命中则选 top 3
+      const hookTypes = new Set((r.hook.types||[]).map(t=>t.name));
+      const titles = T.titles.filter(t => hookTypes.has(t.type)).slice(0, 3);
+      const fallbackTitles = T.titles.slice().sort((a,b)=>b.avgLikes-a.avgLikes).slice(0, 3);
+      picks.push({ kind: 'titles', name: '标题可参考', items: titles.length ? titles : fallbackTitles });
+      // 口播话术：根据植入层级
+      let scripts;
+      if (r.embed.level === 'L5') scripts = T.scripts.filter(s => s.name.includes('完整') || s.name.includes('深度'));
+      else if (r.embed.level === 'L4') scripts = T.scripts.filter(s => s.name.includes('完整') || s.name.includes('基础'));
+      else if (r.embed.level === 'L3') scripts = T.scripts.filter(s => s.name.includes('情绪') || s.name.includes('基础'));
+      else scripts = T.scripts.slice(0, 2);
+      picks.push({ kind: 'scripts', name: '口播话术可参考', items: scripts.slice(0, 2) });
+      // 钩子：固定推 3 条
+      picks.push({ kind: 'ctas', name: '结尾钩子可参考', items: T.ctas });
+      return picks;
+    }
+
+    function renderTemplateSuggests(r) {
+      const picks = suggestTemplates(r);
+      return `
+        <div class="tpl-suggest-block">
+          <div class="sub-title">📚 直接可用的模版 <span class="count">从爆款沉淀 · 一键复制给达人</span></div>
+          ${picks.map(p => `
+            <div class="tpl-group">
+              <div class="tpl-group-title">${p.name}</div>
+              <div class="tpl-grid-mini">
+                ${p.items.map(x => tplCard(x, p.kind)).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function collect() {
+      form.title = document.getElementById('f_title')?.value || '';
+      form.copy = document.getElementById('f_copy')?.value || '';
+    }
+
+    window.setType = function(t) {
+      collect();
+      form.type = t;
+      form = JSON.parse(JSON.stringify(samples[t]));
+      render();
+    };
+    window.loadSample = function() {
+      form = JSON.parse(JSON.stringify(samples[form.type]));
+      result = null;
+      render();
+      toast('已载入' + (form.type==='video'?'视频':'图文') + '示例');
+    };
+    window.runReview = function() {
+      collect();
+      if (!form.title && !form.copy) {
+        toast('请先填写标题或正文');
+        return;
+      }
+      result = window.CC_REVIEW.review(form);
+      render();
+      const v = result.step1.pass && result.step2.aCount >= 3 ? '🔥 高爆款潜力' : (result.step1.pass ? '👍 合规' : '❌ 不合规');
+      toast('审稿完成 · ' + v);
+    };
+
+    window.sendFeedback = function() {
+      if (!result) return;
+      const s1 = result.step1, s2 = result.step2;
+      let msg = `【内容审稿反馈 · ${form.title || '未命名'}】\n\n`;
+      msg += `STEP 1 · Brief 合规结果：${s1.pass ? '✅ 合规' : '❌ 不合规'}\n`;
+      const fails = s1.items.filter(i => !i.pass);
+      if (fails.length) {
+        msg += `\n需要补齐：\n`;
+        fails.forEach(i => msg += `• ${i.label}\n  → ${i.fix}\n`);
+      }
+      msg += `\nSTEP 2 · 内容潜力：${s2.potential}\n${s2.potentialDesc}\n\n具体建议：\n`;
+      const cards = [['标题钩子', s2.hook], ['植入深度 '+s2.embed.level, s2.embed], ['场景化', s2.scene], ['情绪/干货感', s2.vibe]];
+      cards.forEach(([n, el]) => {
+        msg += `\n[${n}] ${el.score}级\n● ${el.diagnosis}\n`;
+        if (el.rewrite) {
+          if (Array.isArray(el.rewrite)) el.rewrite.forEach(r => msg += `  ▪ ${r.type}：${r.text}\n`);
+          else msg += `  ▪ ${el.rewrite}\n`;
+        }
+      });
+      copyText(msg, '反馈已复制，可直接发给达人');
+    };
+
+    function render() {
+      const html = `
+        <div class="glass review-header panel-hover">
+          <h1>内容审核</h1>
+          <div class="sub"><b>Step 1</b> 判断是否符合 Brief 植入要求 · <b>Step 2</b> 评估是否是一篇有爆款潜力的好内容</div>
+        </div>
+
+        <div class="review-layout" style="height: auto; min-height: calc(100vh - 130px);">
+          <div class="glass compact-form">${renderForm()}</div>
+          <div id="result-area">
+            ${result ? renderStep1(result.step1) + renderStep2(result.step2, result.step1) : `
+              <div class="glass step-block">
+                <div class="empty-state">
+                  <div class="big">🤖</div>
+                  <div>把笔记标题和正文填到左边，点「开始审稿」</div>
+                  <div class="sub-line">Step 1 秒出合规结果 · Step 2 给出爆款潜力评估和改写建议</div>
+                </div>
+              </div>
+            `}
+          </div>
+        </div>
+      `;
+      document.querySelector('.content-scroll').innerHTML = html;
+      // 修正 review-layout 高度
+      const layout = document.querySelector('.review-layout');
+      if (layout) layout.style.height = 'auto';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      mountShell('');
+      render();
+    });
+
+    </script>
+</body>
+</html>

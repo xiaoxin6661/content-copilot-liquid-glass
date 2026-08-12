@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Content Copilot · Brief 设置</title>
+  <link rel="stylesheet" href="./assets/style.css?v=2400">
+  <style>
+    /* briefs page */
+    .brief-hero { padding: 22px 28px; margin-bottom: 16px; }
+    .brief-hero h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin-bottom:4px; }
+    .brief-hero .sub { font-size: 13px; color: var(--text-soft); }
+    .brief-hero .head-row { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; }
+    .brief-hero .actions { display:flex; gap:8px; align-items:center; flex-shrink:0; }
+
+    .import-banner {
+      display:flex; justify-content:space-between; align-items:center; gap:16px;
+      padding: 14px 18px; margin-bottom: 16px; border-radius: 16px;
+      background: rgba(120,200,150,0.14); border: 1px solid rgba(80,180,120,0.3);
+    }
+
+    .brief-sec { margin-bottom: 18px; }
+    .brief-sec-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; letter-spacing:-0.01em; }
+    .rule-table { width:100%; border-collapse: collapse; font-size: 13px; }
+    .rule-table td { padding: 8px 12px; border-bottom: 1px solid rgba(0,0,0,0.06); vertical-align: top; }
+    .rule-table td:first-child { color: var(--text-soft); white-space: nowrap; width: 88px; font-weight:500; }
+    .case-tag { display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; background:rgba(0,0,0,0.05); margin:1px 0; }
+    .case-tag.hot { background: rgba(255,90,90,0.14); color: rgba(200,40,40,1); }
+
+    .feature-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+    .feature-card {
+      padding: 12px 14px; border-radius: 14px; position:relative;
+      background: rgba(255,255,255,0.55); border: 1px solid rgba(0,0,0,0.06);
+    }
+    .feature-card.must { border-color: rgba(255,150,60,0.4); background: rgba(255,200,120,0.12); }
+    .must-badge {
+      position:absolute; top:-8px; right:10px; font-size:10px; padding:2px 8px; border-radius:20px;
+      background: rgba(255,150,60,0.9); color:#fff; font-weight:600;
+    }
+    .fname { font-size:13px; font-weight:600; margin-bottom:3px; }
+    .fdesc { font-size:11px; color: var(--text-soft); line-height:1.5; }
+
+    .forbid-list { display:flex; flex-direction:column; gap:8px; }
+    .forbid-item {
+      padding: 8px 12px; border-radius: 12px; font-size: 12px;
+      background: rgba(255,90,90,0.08); border: 1px solid rgba(255,90,90,0.18);
+      color: rgba(180,40,40,1);
+    }
+  </style>
+  <script src="./assets/main.js?v=2400"></script>
+</head>
+<body>
+  <script src="./assets/data.js"></script>
+  <script src="./assets/brief-import.js"></script>
+  <script>
+    function renderBriefPage() {
+      const B = window.getActiveBrief();
+      const imported = B.__imported;
+      const stats = B.__importStats || {};
+      const banner = imported ? `
+        <div class="import-banner">
+          <div>
+            <div style="font-size:13px;font-weight:600;">📄 已导入自定义 Brief</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+              来源：${stats.fileName||'外部 PDF'} · ${stats.pages||'?'} 页 · 命中功能 ${stats.featuresHit||0}/12 · 抽取话题 ${stats.tagsHit||0} 个
+            </div>
+          </div>
+          <button class="btn-ghost" onclick="resetBriefPage()">↺ 恢复官方</button>
+        </div>
+      ` : '';
+
+      return `
+        <div class="glass brief-hero panel-hover">
+          <div class="head-row">
+            <div>
+              <h1>Brief 设置</h1>
+              <div class="sub">${B.brand.slogan}</div>
+            </div>
+            <div class="actions">
+              <label class="btn-primary" style="cursor:pointer;">
+                📄 从 PDF 导入
+                <input type="file" accept="application/pdf" onchange="handleBriefPdfPage(event)" style="display:none;">
+              </label>
+              ${imported ? `<button class="btn-ghost" onclick="resetBriefPage()">↺ 恢复官方</button>` : ''}
+            </div>
+          </div>
+        </div>
+
+        ${banner}
+
+        <div class="glass panel-hover" style="padding:22px 26px;">
+          <div class="brief-sec">
+            <div class="brief-sec-title">🎯 必带元素</div>
+            <table class="rule-table">
+              <tr><td>话题</td><td>${B.mustHave.hashtags.map(h => `<span class="case-tag hot">${h}</span>`).join(' ')}</td></tr>
+              <tr><td>@ 官方</td><td>${B.mustHave.mention}</td></tr>
+              <tr><td>强制功能</td><td>${B.mustHave.forceFeature}</td></tr>
+              <tr><td>置顶评论</td><td>${B.mustHave.pin}</td></tr>
+            </table>
+          </div>
+
+          <div class="brief-sec">
+            <div class="brief-sec-title">📐 硬性规则</div>
+            <table class="rule-table">
+              <tr><td>图文</td><td>${B.rules.image.count} · 产品图 ${B.rules.image.productRatio} · 前 3 张含产品 · 非末 3 张</td></tr>
+              <tr><td>视频</td><td>${B.rules.video.duration} · 产品占比 ${B.rules.video.productRatio} · 首现 ${B.rules.video.firstAppear} · ${B.rules.video.segmentMin} · ${B.rules.video.lastFifteen}</td></tr>
+              <tr><td>文案</td><td>${B.rules.copy.minChars} · ${B.rules.copy.focus}</td></tr>
+            </table>
+          </div>
+
+          <div class="brief-sec">
+            <div class="brief-sec-title">💊 12 大功能</div>
+            <div class="feature-grid">
+              ${B.features.map(f => `
+                <div class="feature-card ${f.must?'must':''}">
+                  ${f.must ? '<div class="must-badge">必展示</div>' : ''}
+                  <div class="fname">${f.name}${f.__hit?' <span style="font-size:10px;color:rgba(20,120,80,0.9);">✓</span>':''}</div>
+                  <div class="fdesc">${f.desc}</div>
+                </div>`).join('')}
+            </div>
+          </div>
+
+          <div class="brief-sec">
+            <div class="brief-sec-title">🎁 流量激励</div>
+            <table class="rule-table">
+              ${B.incentive.map(r => `<tr><td>${r.key}</td><td><b>${r.flow}</b></td><td style="color:var(--text-soft);">${r.hint}</td></tr>`).join('')}
+            </table>
+          </div>
+
+          <div class="brief-sec" style="margin-bottom:0;">
+            <div class="brief-sec-title">⊘ 违禁项</div>
+            <div class="forbid-list">
+              ${B.forbid.map(f => `<div class="forbid-item">${f.text}</div>`).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // PDF 导入（复用 main.js 的 handleBriefPdf 逻辑，但重渲染本页）
+    window.handleBriefPdfPage = async function (ev) {
+      const file = ev.target.files && ev.target.files[0];
+      ev.target.value = '';
+      if (!file) return;
+      if (!file.name.toLowerCase().endsWith('.pdf')) { toast('仅支持 PDF'); return; }
+      if (!window.BRIEF_IMPORT) { toast('导入模块未加载'); return; }
+      toast('正在解析 PDF…');
+      try {
+        const parsed = await window.BRIEF_IMPORT.importFromPdf(file, window.CC_DATA.brief);
+        store.set('customBrief', parsed);
+        toast(`✓ 导入完成 · ${parsed.__importStats.pages} 页 · 命中 ${parsed.__importStats.featuresHit}/12 功能`);
+        render();
+      } catch (e) {
+        console.error(e);
+        toast('✗ 解析失败：' + (e.message || e));
+      }
+    };
+
+    window.resetBriefPage = function () {
+      if (!confirm('确定恢复为官方 Brief？已导入的内容会被清除。')) return;
+      store.set('customBrief', null);
+      localStorage.removeItem('cc_customBrief');
+      toast('已恢复为官方 Brief');
+      render();
+    };
+
+    function render() {
+      document.querySelector('.content-scroll').innerHTML = renderBriefPage();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      mountShell('');
+      render();
+    });
+  </script>
+</body>
+</html>

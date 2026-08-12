@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Content Copilot · 达人清单</title>
+  <link rel="stylesheet" href="./assets/style.css?v=2400">
+  <style>
+    /* dashboard v3 */
+    .page-hero { padding: 22px 28px; margin-bottom: 16px; }
+    .page-hero h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin-bottom:4px; }
+    .page-hero .sub { font-size: 13px; color: var(--text-soft); }
+
+    /* 今日总览一行汇总(取代旧的3卡) */
+    .summary-line {
+      padding: 8px 20px; margin-bottom: 12px;
+      font-size: 12px; color: var(--text-soft); letter-spacing: 0.02em;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .summary-line b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .summary-line .sl-num {
+      font-size: 22px; font-weight: 700; letter-spacing: -0.01em;
+      color: var(--text); margin-right: 2px;
+    }
+    .summary-line .sl-sep { color: var(--text-faint); }
+    .summary-line .sl-danger b { color: rgba(220,60,60,1); }
+
+    @media (max-width: 800px) {
+      .overview-row { grid-template-columns: 1fr; }
+    }
+
+    .todo-block { padding: 22px 26px; margin-bottom: 16px; }
+    .todo-head { display:flex; align-items:center; justify-content:space-between; margin-bottom: 14px; }
+    .todo-head .l { display:flex; align-items:center; gap: 10px; }
+    .todo-head .l h2 { font-size:16px; font-weight:600; }
+    .todo-count {
+      font-size: 11px; padding: 3px 10px; border-radius: 999px;
+      background: rgba(255,150,150,0.2); color: rgba(180,40,40,0.95); font-weight:600; letter-spacing:0.05em;
+    }
+    .todo-list { display:flex; flex-direction:column; gap: 10px; }
+    .todo-item {
+      display:flex; align-items:center; justify-content:space-between; gap: 14px;
+      padding: 14px 18px; border-radius: var(--r-md);
+      background: rgba(255,255,255,0.55); border: 1px solid rgba(0,0,0,0.06);
+      transition: all 0.3s var(--ease);
+    }
+    .todo-item:hover { background: rgba(255,255,255,0.85); transform: translateX(2px); }
+    .todo-item.urgent { border-color: rgba(255,150,120,0.5); background: rgba(255,220,180,0.3); }
+    .todo-item.urgent:hover { background: rgba(255,220,180,0.55); }
+    .todo-ico {
+      width: 36px; height: 36px; flex-shrink:0; border-radius: 12px;
+      background: rgba(255,255,255,0.8); border: 1px solid rgba(0,0,0,0.06);
+      display:grid; place-items:center; font-size:18px;
+    }
+    .todo-body { flex:1; min-width:0; }
+    .todo-title { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+    .todo-desc { font-size: 12px; color: var(--text-soft); }
+    .todo-actions { display:flex; gap: 8px; }
+
+    .collab-board { padding: 22px 26px; }
+    .board-head { display:flex; align-items:center; justify-content:space-between; margin-bottom: 14px; }
+    .stage-tabs { display:flex; gap: 6px; flex-wrap:wrap; }
+
+    .collab-list { display:flex; flex-direction:column; gap: 8px; }
+    .collab-row {
+      display: grid;
+      grid-template-columns: 180px 120px 1fr 200px 130px;
+      align-items: center; gap: 12px;
+      padding: 14px 16px; border-radius: var(--r-md);
+      background: rgba(255,255,255,0.5); border: 1px solid rgba(0,0,0,0.06);
+      transition: all 0.25s var(--ease);
+    }
+    .collab-row:hover { background: rgba(255,255,255,0.8); }
+    .creator { display:flex; flex-direction:column; }
+    .creator .n { font-size:14px; font-weight:600; }
+    .creator .m { font-size:11px; color: var(--text-muted); margin-top:2px; }
+    .stage-chip {
+      display:inline-block; padding: 4px 10px; border-radius: 999px; font-size:11px; font-weight:600; letter-spacing:0.04em;
+    }
+    .stage-chip.gray { background: rgba(0,0,0,0.06); color: var(--text-soft); }
+    .stage-chip.blue { background: rgba(120,180,255,0.18); color: rgba(30,80,150,1); }
+    .stage-chip.warn { background: rgba(255,180,80,0.22); color: rgba(160,90,20,1); }
+    .stage-chip.hot  { background: rgba(255,120,120,0.2); color: rgba(160,30,30,0.95); }
+    .stage-chip.good { background: rgba(120,220,180,0.22); color: rgba(20,120,80,0.95); }
+
+    .progress-track {
+      display:flex; align-items:center; gap: 4px;
+      padding: 0 4px;
+    }
+    .progress-dot {
+      flex:1; height: 4px; border-radius: 2px; background: rgba(0,0,0,0.08);
+      transition: background 0.3s var(--ease);
+    }
+    .progress-dot.done { background: rgba(80,180,120,0.7); }
+    .progress-dot.now  { background: rgba(255,150,80,0.9); box-shadow: 0 0 8px rgba(255,150,80,0.4); }
+    .progress-labels { display:flex; justify-content:space-between; margin-top:4px; font-size:9px; color: var(--text-muted); letter-spacing:0.03em; }
+
+    .age-note { font-size:11px; color: var(--text-muted); }
+    .age-note.overdue { color: rgba(200,60,60,0.9); font-weight:600; }
+
+    /* copy modal */
+    .copy-modal {
+      position:fixed; inset:0; z-index:99; display:none;
+      align-items:center; justify-content:center;
+      background: rgba(0,0,0,0.35); backdrop-filter: blur(20px);
+    }
+    .copy-modal.open { display:flex; }
+    .copy-modal-panel {
+      width: 520px; max-width: 92vw; max-height: 80vh; overflow:auto;
+      padding: 24px 28px; border-radius: var(--r-lg);
+    }
+    .copy-modal .m-title { font-size:16px; font-weight:600; margin-bottom: 6px; }
+    .copy-modal .m-sub { font-size:12px; color: var(--text-muted); margin-bottom: 14px; }
+
+    /* tip strip */
+    .tip-strip {
+      margin-top: 12px; padding: 10px 14px;
+      background: linear-gradient(90deg, rgba(200,220,255,0.35), rgba(255,220,240,0.3));
+      border: 1px solid rgba(120,180,255,0.35);
+      border-radius: var(--r-md);
+      font-size: 12px; color: var(--text);
+    }
+
+    /* import list */
+    .im-summary {
+      padding: 10px 14px; border-radius: var(--r-sm);
+      background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.06);
+      font-size: 12px; color: var(--text-soft);
+      margin-bottom: 8px;
+    }
+    .im-summary b { color: var(--text); font-weight: 600; }
+    .im-list { max-height: 240px; overflow-y: auto; display:flex; flex-direction:column; gap:4px; padding-right: 4px; }
+    .im-row {
+      padding: 8px 12px; border-radius: 6px;
+      background: rgba(255,255,255,0.55); border: 1px solid rgba(0,0,0,0.06);
+    }
+    .im-row.skip { opacity: 0.55; }
+    .im-row.warn { background: rgba(255,220,150,0.15); border-color: rgba(255,180,80,0.3); }
+
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary:disabled:hover { transform: none; }
+
+    /* owner pill 在 hero */
+    .owner-pill {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 3px 10px; margin-left: 10px;
+      border-radius: 999px; font-size: 11px; cursor: pointer;
+      background: rgba(255,255,255,0.5); border: 1px solid rgba(0,0,0,0.06);
+      color: var(--text-soft); letter-spacing: 0.02em;
+      transition: all 0.2s var(--ease);
+    }
+    .owner-pill:hover { background: rgba(255,255,255,0.9); border-color: rgba(0,0,0,0.15); }
+    .owner-pill b { color: var(--text); font-weight: 600; }
+
+    /* 新建表单 owner 行 */
+    .owner-line {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px; margin: 10px 0 4px;
+      background: rgba(255,255,255,0.55); border: 1px solid rgba(0,0,0,0.06);
+      border-radius: var(--r-sm); font-size: 12px; color: var(--text-soft);
+    }
+    /* ======== 内嵌审稿面板 ======== */
+    .review-panel {
+      margin-top: 10px; border-top: 1px solid rgba(0,0,0,0.07);
+      padding-top: 12px; animation: fadeSlideIn 0.2s var(--ease);
+    }
+    .rp-row { display:flex; gap:8px; margin-bottom:8px; }
+    .rp-row input, .rp-row textarea {
+      flex:1; padding: 8px 12px; font-size: 12px; font-family:inherit;
+      border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;
+      background: rgba(255,255,255,0.85); line-height:1.5;
+    }
+    .rp-row textarea { min-height: 72px; resize: vertical; }
+    .rp-type-row { display:flex; gap:14px; font-size:12px; align-items:center; padding: 4px 0 8px; }
+    .rp-type-row label { cursor:pointer; display:flex; align-items:center; gap:4px; }
+    .rp-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:6px; }
+
+    /* 审稿结果内嵌 */
+    .inline-result {
+      margin-top: 12px; padding: 12px 14px;
+      background: rgba(255,255,255,0.6); border-radius: 10px;
+      border: 1px solid rgba(0,0,0,0.07);
+    }
+    .inline-result .ir-step { font-size: 11px; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:6px; font-weight:600; }
+    .inline-result .ir-pass { color: rgba(20,140,80,1); font-weight:700; font-size:13px; }
+    .inline-result .ir-fail { color: rgba(200,50,40,1); font-weight:700; font-size:13px; }
+    .inline-result .ir-issue { font-size:11px; color:rgba(180,80,20,1); margin:3px 0; padding-left:12px; }
+    .inline-result .ir-score { font-size:20px; font-weight:800; letter-spacing:-0.02em; }
+    .inline-result .ir-dim { font-size:11px; color:var(--text-soft); margin:2px 0; padding-left:10px; }
+    .inline-result .ir-sep { border:none; border-top:1px dashed rgba(0,0,0,0.08); margin:8px 0; }
+    .feedback-box {
+      margin-top: 10px; padding: 10px 12px;
+      background: rgba(200,230,255,0.3); border-radius: 8px;
+      border: 1px solid rgba(120,180,255,0.3);
+    }
+    .feedback-box .fb-label { font-size:11px; color:var(--text-muted); font-weight:600; letter-spacing:0.05em; margin-bottom:6px; }
+    .feedback-box .fb-text { font-size:12px; line-height:1.7; color:var(--text); white-space:pre-wrap; }
+    .feedback-box .fb-actions { margin-top:8px; display:flex; gap:8px; justify-content:flex-end; }
+
+    /* 内嵌审稿开关 */
+    .todo-item.expanded { background: rgba(255,255,255,0.75); }
+
+    /* 已发布录入弹窗 */
+    .metric-form .mf-row { display:flex; gap:10px; margin-bottom:10px; }
+    .metric-form .mf-field { flex:1; display:flex; flex-direction:column; gap:4px; }
+    .metric-form label { font-size:11px; color:var(--text-muted); font-weight:600; }
+    .metric-form input { padding:8px 10px; font-size:13px; border:1px solid rgba(0,0,0,0.1); border-radius:8px; background:rgba(255,255,255,0.9); text-align:right; }
+    .review-result-badge { display:inline-block; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:700; margin-bottom:8px; }
+    .rrb-hot { background:rgba(255,200,120,0.35); color:rgba(160,80,10,1); }
+    .rrb-good { background:rgba(120,220,180,0.35); color:rgba(10,110,60,1); }
+    .rrb-low { background:rgba(200,200,200,0.35); color:rgba(80,80,80,1); }
+
+    /* 一键解析区 */
+    .quick-box {
+      background: linear-gradient(135deg, rgba(200,220,255,0.35), rgba(255,220,240,0.28));
+      border: 1px solid rgba(120,180,255,0.35);
+      border-radius: var(--r-md);
+      padding: 12px; margin-bottom: 14px;
+    }
+    .quick-box textarea {
+      width: 100%; min-height: 100px; padding: 10px 12px;
+      border: 1px solid rgba(0,0,0,0.08); border-radius: 8px;
+      background: rgba(255,255,255,0.85);
+      font-size: 12px; font-family: inherit; line-height: 1.55;
+      resize: vertical; box-sizing: border-box;
+    }
+    .quick-box .parse-btn {
+      margin-top: 8px; font-size: 12px; padding: 6px 14px;
+    }
+    .form-divider {
+      text-align: center; font-size: 11px; color: var(--text-muted);
+      letter-spacing: 0.08em; margin: 4px 0 10px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .form-divider::before, .form-divider::after {
+      content:''; flex:1; height: 1px; background: rgba(0,0,0,0.08);
+    }
+
+    /* 催办响应区域 */
+    .chase-response {
+      margin-top: 14px; padding: 14px 16px; border-radius: var(--r-md);
+      background: rgba(255,255,255,0.6); border: 1px solid rgba(0,0,0,0.08);
+    }
+    .chase-title { font-size: 12px; font-weight: 600; color: var(--text-soft); margin-bottom: 10px; letter-spacing: 0.03em; }
+    .chase-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .chase-btn {
+      padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.85); font-size: 12px; cursor: pointer;
+      text-align: left; transition: all 0.2s var(--ease);
+    }
+    .chase-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+    .chase-btn.ok:hover { background: rgba(120,220,180,0.2); }
+    .chase-btn.wait:hover { background: rgba(200,220,255,0.25); }
+    .chase-btn.silent:hover { background: rgba(200,200,200,0.25); }
+    .chase-btn.danger { color: rgba(180,60,60,0.9); }
+    .chase-btn.danger:hover { background: rgba(255,150,150,0.15); border-color: rgba(255,150,150,0.4); }
+    .copy-modal .m-text {
+      padding: 14px 16px; border-radius: var(--r-md);
+      background: rgba(255,255,255,0.7); border:1px solid rgba(0,0,0,0.08);
+      font-size:13px; line-height:1.7; white-space: pre-wrap;
+      max-height: 40vh; overflow:auto;
+    }
+    .copy-modal .m-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
+
+    @media (max-width: 1200px) {
+      .collab-row { grid-template-columns: 160px 100px 1fr 160px 110px; }
+    }
+    @media (max-width: 960px) {
+      .collab-row { grid-template-columns: 1fr; }
+    }
+  </style>
+  <script src="./assets/main.js?v=2400"></script>
+</head>
+<body>
+  <script src="./assets/data.js"></script>
+  <script src="./assets/brief-import.js"></script>
+  <script src="./assets/sheet-import.js"></script>
+  <script>
+    const collabs = store.get('collabs', window.CC_DATA.collabs);
+    const SM = window.CC_DATA.stageMeta;
+    // 阶段流转链路(invited 后直接到 scriptPending,跳过 briefed)
+    const stages = ['invited','briefed','scriptPending','scriptApproved','draftReview','published','promoting','archived'];
+    // 推进跳过映射
+    const NEXT_STAGE = {
+      invited: 'scriptPending',      // 下一步→直入待脚本
+      briefed: 'scriptPending',
+      scriptPending: 'scriptApproved',
+      scriptApproved: 'draftReview',
+      draftReview: 'published',
+      published: 'promoting',
+      promoting: 'archived',
+    };
+    let filterStage = 'all';
+    // 当前操作人(默认)
+    let currentOwner = store.get('owner', '王佳欣');
+
+    // ===== 催稿话术随机变体池(顶层,todos() 和 runInlineReview 均可调用)=====
+    const pickChase = () => '哈喽老师，同步确认下初稿进度，辛苦抽空发我一下，谢谢～';
+
+    // ===== 计算:某个 collab 距离当前多少天 =====
+    function daysSince(iso) {
+      const now = new Date('2026-07-30T16:30:00+08:00');
+      const then = new Date(iso);
+      return Math.floor((now - then) / (24*3600*1000));
+    }
+
+    // ===== 生成催办/待办提示 =====
+    // 返回 { text, action, urgent, script?, link?, kind }
+    function pushHint(c) {
+      const days = daysSince(c.stageAt);
+      const meta = SM[c.stage];
+      const today = '2026-07-30';
+
+      // 当前阶段对应的"承诺日期"
+      // - scriptPending / briefed / invited → 看 promisedDraft (初稿日期)
+      // - scriptApproved → 仍看 promisedDraft
+      // - draftReview / published / 推流 → 看 expectPublishAt (发布日期)
+      const promisedDraft = c.promisedDraft || c.expectPublishAt || null;
+      const promisedPublish = c.expectPublishAt || null;
+
+      function chaseSummary(promised) {
+        if (!c.chaseCount) return null;
+        const chased = `已催 ${c.chaseCount} 次`;
+        const lastResp = c.lastResponse || '未回复';
+        if (c.chaseCount >= 3 && lastResp === '未回复') {
+          return { text: `${chased} 未回复 · 建议终止合作`, urgent: true, kind: 'stalled' };
+        }
+        if (promised && promised > today) {
+          return { text: `${chased} · 达人承诺 ${promised} 前交`, urgent: false, kind: 'waiting-again' };
+        }
+        return { text: `${chased} · 上次回复:${lastResp}`, urgent: true, kind: 'chased' };
+      }
+
+      switch (c.stage) {
+        case 'invited': {
+          return { text: `已邀约 ${days} 天,催一下初稿进展`, action: '催初稿', urgent: days >= meta.sla,
+            script: pickChase(), openChase: true, collab: c };
+        }
+        case 'briefed': {
+          return { text: `Brief 已发 ${days} 天,催一下初稿进展`, action: '催初稿',
+            urgent: days >= meta.sla, script: pickChase(), openChase: true, collab: c };
+        }
+
+        case 'scriptPending': {
+          const chase = chaseSummary(promisedDraft);
+          const beforeDeadline = promisedDraft && promisedDraft > today;
+          const atOrPast = promisedDraft && promisedDraft <= today;
+          if (chase) return {
+            text: chase.text,
+            action: chase.kind === 'stalled' ? '处理' : '追踪',
+            urgent: chase.urgent,
+            openChase: true,
+          };
+          if (beforeDeadline) {
+            const daysToGo = Math.ceil((new Date(promisedDraft) - new Date(today))/86400000);
+            return { text: `等待中 · 承诺 ${promisedDraft} 交初稿(还剩 ${daysToGo} 天)`, action: '等待', urgent: false, kind: 'waiting', suppress: true };
+          }
+          if (atOrPast) return {
+            text: `初稿日 ${promisedDraft} 已到 · 需催脚本`,
+            action: '催脚本',
+            urgent: true,
+            openChase: true,
+            script: pickChase(),
+          };
+          // 无承诺日期 fallback
+          return { text: `待脚本 · 未设初稿日期`, action: '催脚本', urgent: days >= meta.sla, openChase: true, script: pickChase() };
+        }
+
+        case 'scriptApproved': {
+          const chase = chaseSummary(promisedDraft);
+          const beforeDeadline = promisedDraft && promisedDraft > today;
+          if (chase) return { text: chase.text, action: chase.kind === 'stalled' ? '处理' : '追踪', urgent: chase.urgent, openChase: true };
+          if (beforeDeadline) {
+            const daysToGo = Math.ceil((new Date(promisedDraft) - new Date(today))/86400000);
+            return { text: `等待中 · 承诺 ${promisedDraft} 交初稿(还剩 ${daysToGo} 天)`, action: '等待', urgent: false, suppress: true };
+          }
+          return { text: `脚本已确认 ${days} 天 · 可催初稿`, action: '催初稿', urgent: true, openChase: true, script: pickChase() };
+        }
+
+        case 'draftReview':
+          return { text: `初稿已提交 ${days} 天,等审稿`, action: '展开审稿', urgent: true, openReview: true };
+
+        case 'published': {
+          const beforePub = promisedPublish && promisedPublish > today;
+          if (beforePub) return null; // 未到发布日不需醒
+          return { text: `已发布 ${days} 天`, action: '开始投流', urgent: false, advanceAndLink: './launch.html', collab: c };
+        }
+
+        case 'promoting':
+          if (days >= 28) return { text: `已推流 ${days} 天,可归档`, action: '归档', urgent: false, collab: c };
+          return null;
+        default: return null;
+      }
+    }
+
+    // ===== 今日待办 =====
+    function todos() {
+      return collabs.map(c => {
+        const h = pushHint(c);
+        if (!h || h.suppress) return null;
+        return { ...h, collab: c };
+      }).filter(Boolean).sort((a, b) => (b.urgent?1:0) - (a.urgent?1:0));
+    }
+
+    // ===== 6 段进度条 =====
+    function progressBar(stage) {
+      const flow = ['briefed','scriptPending','scriptApproved','draftReview','published','promoting'];
+      const idx = flow.indexOf(stage);
+      const labels = ['Brief','脚本','确认','初稿','发布','推流'];
+      const dots = flow.map((s, i) => {
+        let cls = 'progress-dot';
+        if (i < idx) cls += ' done';
+        else if (i === idx) cls += ' now';
+        return `<div class="${cls}"></div>`;
+      }).join('');
+      const lbls = labels.map((l, i) => {
+        const cur = (i === idx) ? 'style="color:rgba(180,90,20,1);font-weight:600;"' : '';
+        return `<span ${cur}>${l}</span>`;
+      }).join('');
+      return `<div><div class="progress-track">${dots}</div><div class="progress-labels">${lbls}</div></div>`;
+    }
+
+    // 内嵌审稿展开状态(id -> true)
+    let expandedReview = {};
+    window.toggleReview = function(id) {
+      expandedReview[id] = !expandedReview[id];
+      render();
+    };
+
+    // 内嵌审稿提交
+    window.runInlineReview = function(id) {
+      const c = collabs.find(x => x.id === id);
+      if (!c) return;
+      const title = document.getElementById(`rp_title_${id}`)?.value.trim();
+      const copy  = document.getElementById(`rp_copy_${id}`)?.value.trim();
+      const type  = document.querySelector(`input[name="rp_type_${id}"]:checked`)?.value || 'image';
+      if (!title || !copy) { toast('请填写标题和正文'); return; }
+
+      const B = window.CC_DATA.brief;
+      // STEP1: Brief 合规
+      const issues = [];
+      if (!/sigma/i.test(copy) && !/@sigma/i.test(copy)) issues.push('正文未 @Sigma 巡官方账号');
+      const hashtagCount = (copy.match(/#[^\s#]+/g)||[]).length;
+      if (hashtagCount < 2) issues.push(`话题数 ${hashtagCount},需到2个`);
+      const len = copy.replace(/#[^\s]+/g,'').replace(/@[^\s]+/g,'').trim().length;
+      const minLen = type === 'video' ? 30 : 100;
+      if (len < minLen) issues.push(`正文字数 ${len},${type === 'video' ? '视频' : '图文'}至少 ${minLen} 字`);
+      const featKeys = Object.keys(B.features.reduce((o,f)=>{o[f.key]=f;return o;},{}));
+      const detectedFeats = featKeys.filter(k => {
+        const f = B.features.find(x=>x.key===k);
+        return f && f.keywords && f.keywords.some(kw=>copy.includes(kw)||title.includes(kw));
+      });
+      if (detectedFeats.length === 0) issues.push('未提及任何 Sigma 功能点');
+      const s1pass = issues.length === 0;
+
+      // STEP2: 内容潜力
+      const hookPatterns = [
+        { name:'数字冲击', re:/\d+[\u5929\u5c81\u516c\u91cc\u6b65\u5c0f\u65f6\u5206\u6708\u5468\u5e74]/ },
+        { name:'问句起头', re:/[!?!?],|^[为这么为啥为什]/ },
+        { name:'情绪载体', re:/感动|哭了|没想到|过分|太美了/ },
+        { name:'列清式', re:/\d+个[原因方法心得]◎/ },
+      ];
+      const hookTypes = hookPatterns.filter(p=>p.re.test(title)||p.re.test(copy.slice(0,60)));
+
+      const scenePhrases = ['晚跑','晨跑','跳绳','健身','马拉松','赛事','校园','日常','穿搭','旅行','探店','安全感'];
+      const sceneHits = scenePhrases.filter(p=>copy.includes(p)||title.includes(p));
+
+      const embedKeywords = ['Sigma跳绳绳绳绳','Sigma AI跳绳','AI同步运动','AI跳绳','新饲子','每天运动环','Sigma连接','Sigma马表','动态尔心率','路线地图','跳绳小小兵'];
+      const embedCount = embedKeywords.filter(k=>copy.includes(k)||title.includes(k)).length;
+      const embedLevel = embedCount >= 4 ? 'L5' : embedCount >= 3 ? 'L4' : embedCount >= 2 ? 'L3' : embedCount >= 1 ? 'L2' : 'L1';
+
+      const hasEmo = /[感动就是就这样爱了哭了好爆哈哈哈没想到显小娣无敌]/.test(copy);
+      const hasTips = /\d+\.|心得|建议|技巧|方法|攻略|干货/.test(copy);
+      const vibeStar = hasEmo ? (hasTips ? 3 : 2) : (hasTips ? 3 : 1);
+
+      // 总分
+      const score = (
+        (hookTypes.length >= 1 ? 25 : 10) +
+        (embedLevel === 'L5' ? 25 : embedLevel === 'L4' ? 20 : embedLevel === 'L3' ? 15 : embedLevel === 'L2' ? 10 : 5) +
+        (sceneHits.length >= 2 ? 25 : sceneHits.length === 1 ? 15 : 5) +
+        (vibeStar === 3 ? 25 : vibeStar === 2 ? 15 : 8)
+      );
+      const grade = score >= 85 ? '\u7206款相' : score >= 65 ? '潜力剪' : '需优化';
+      const gradeColor = score >= 85 ? 'hot' : score >= 65 ? 'good' : 'warn';
+
+      // 改写建议(最多 2 条)
+      const suggestions = [];
+      if (hookTypes.length === 0) suggestions.push(`标题加钓子:尝试改为「${title}→这${(score<50?'\u5468':'\u6708')}里${(type==='video'?'\u8dd1\u5b8c\u591a\u5c11\u516c\u91cc':'\u6211\u7406\u89e3\u4e86\u8fd0\u52a8\u7684XXX')}\u300d`);
+      if (embedLevel === 'L1' || embedLevel === 'L2') suggestions.push('考虑具体提及 1-2 个 Sigma 功能(如:动态心率、跳绳小小兵),植入更自然');
+      if (sceneHits.length === 0) suggestions.push('尝试加一个具体场景:早晨上班前跑、晚上带孩子跑跑等,让读者能代入');
+      if (!hasTips && !hasEmo) suggestions.push('正文加一句情绪引御或干货小结,提升完播率');
+
+      // 生成给达人的反馈话术(口语化问句,去 AI 味)
+      const openers = ['老师收到了!看了一下,', '老师初稿收到啦!过了一遍,'];
+      const closers = ['其他都没问题,改完可以直接发!', '整体方向不错,改一下应该就行!', '大致就这些,辛苦了~'];
+      let feedbackLines = [openers[Math.floor(Math.random()*openers.length)]];
+      if (issues.length > 0) {
+        feedbackLines.push('有几个地方想跟你确认一下:');
+        issues.forEach(issue => {
+          let q = issue
+            .replace('未提及任何 Sigma 功能点', '功能那块还没提到 Sigma,要不要加一下?')
+            .replace('正文未包含指定话题', '话题标签这边没看到,是忘了加吗?')
+            .replace('正文未@Sigma官方账号', '@Sigma 记得加上哦~')
+            .replace(/^/, '• ');
+          feedbackLines.push(q);
+        });
+      } else {
+        feedbackLines.push('Brief 这边没问题,合规!');
+      }
+      if (suggestions.length > 0) {
+        feedbackLines.push('');
+        feedbackLines.push('另外有几个小想法你可以参考一下:');
+        suggestions.forEach(s => feedbackLines.push('• ' + s));
+      }
+      feedbackLines.push('');
+      feedbackLines.push(closers[Math.floor(Math.random()*closers.length)]);
+      const feedbackText = feedbackLines.join('\n');
+
+      // 存回达人记录
+      c.lastReview = { title, copy, type, s1pass, issues, score, grade, gradeColor, suggestions, feedbackText, at: new Date().toISOString() };
+      store.set('collabs', collabs);
+      render();
+      toast('✓ 审稿完成!话术已生成');
+    };
+
+    window.copyFeedback = function(id) {
+      const c = collabs.find(x=>x.id===id);
+      if (c?.lastReview?.feedbackText) copyText(c.lastReview.feedbackText, '反馈话术已复制,直接发给达人即可');
+    };
+
+    // 审稿通过并推进到下一阶段
+    window.approveAndAdvance = function(id) {
+      const c = collabs.find(x=>x.id===id);
+      if (!c) return;
+      const nx = NEXT_STAGE[c.stage];
+      if (!nx) return;
+      c.stage = nx;
+      c.stageAt = new Date().toISOString();
+      store.set('collabs', collabs);
+      render();
+      toast(`✅ 审稿通过,${c.name} 已推进到「${window.CC_DATA.stageMeta[nx]?.label}」`);
+
+    };
+
+    window.pushToTemplate = function(id) {
+      const c = collabs.find(x=>x.id===id);
+      const r = c?.lastReview;
+      if (!r) return;
+      const tpls = store.get('templates', { titles:[], scripts:[], ctas:[] });
+      // 标题入库
+      if (!tpls.titles.some(x=>x.text===r.title)) {
+        tpls.titles.unshift({ type: r.grade === '爆款相' ? '爆款型' : '优质型', text: r.title, from: [c.name], avgLikes: r.score * 10, badge: r.grade, id: Date.now() });
+      }
+      store.set('templates', tpls);
+      toast('标题已沉淀到模版库 ✨');
+    };
+
+    window.pushScript = function(id) {
+      const c = collabs.find(x=>x.id===id);
+      const r = c?.lastReview;
+      if (!r || !r.copy) return;
+      const tpls = store.get('templates', { titles:[], scripts:[], ctas:[] });
+      if (!tpls.scripts.some(x=>x.text===r.copy)) {
+        tpls.scripts.unshift({ name: c.name + '口播', text: r.copy, source: c.name, _auto:true, id: Date.now() });
+        store.set('templates', tpls);
+        toast('口播话术已入库 ✨ → 去工具中心查看');
+      } else { toast('该话术已在库中'); }
+    };
+
+    window.pushCta = function(id) {
+      const c = collabs.find(x=>x.id===id);
+      const r = c?.lastReview;
+      if (!r || !r.copy) return;
+      // 提取正文最后两句作为 CTA
+      const lines = r.copy.split(/[\n，。!\uff01?\uff1f]/).map(s=>s.trim()).filter(Boolean);
+      const ctaText = lines.slice(-2).join('，');
+      if (!ctaText) return;
+      const tpls = store.get('templates', { titles:[], scripts:[], ctas:[] });
+      if (!tpls.ctas.some(x=>x.text===ctaText)) {
+        tpls.ctas.unshift({ name: c.name + ' CTA', text: ctaText, suit:'通用', source: c.name, _auto:true, id: Date.now() });
+        store.set('templates', tpls);
+        toast('结尾钉子已入库 ✨ → 去工具中心查看');
+      } else { toast('该钉子已在库中'); }
+    };
+
+    // 已发布录入数据 + 复盘
+    window.openMetrics = function(id) {
+      const c = collabs.find(x=>x.id===id);
+      if (!c) return;
+      const modal = document.getElementById('metricsModal');
+      modal.dataset.id = id;
+      modal.querySelector('.m-title').textContent = `发布复盘 · ${c.name}`;
+      modal.querySelector('.m-sub').textContent = `填入这篇的实际数据,自动得出复盘结论`;
+      ['views','likes','ctr','new7d'].forEach(k => { const el = modal.querySelector(`#mf_${k}`); if (el) el.value = c.metrics?.[k] || ''; });
+      modal.classList.add('open');
+    };
+    window.closeMetrics = function() { document.getElementById('metricsModal').classList.remove('open'); };
+    // 内联复盘录入(待办卡片内)
+    window.saveInlineMetrics = function(id) {
+      const c = collabs.find(x => x.id === id);
+      if (!c) return;
+      const views = parseFloat(document.getElementById(`mf_views_${id}`)?.value) || 0;
+      const likes = parseInt(document.getElementById(`mf_likes_${id}`)?.value) || 0;
+      const ctr   = parseFloat(document.getElementById(`mf_ctr_${id}`)?.value) || 0;
+      const new7d = parseFloat(document.getElementById(`mf_new7d_${id}`)?.value) || 0;
+      if (!views && !likes) { toast('请至少填入曝光和点赞'); return; }
+      c.metrics = { views, likes, ctr, new7d };
+      const good = (likes >= 1500 ? 1:0) + (ctr >= 10 ? 1:0) + (new7d >= 0.5 ? 1:0);
+      c.reviewNote = good >= 3 ? '超预期,建议沉淀模版' : good >= 2 ? '达标,可复用话术' : '不及预期,下次优化预期话题';
+      c.reviewGrade = good >= 3 ? 'hot' : good >= 2 ? 'good' : 'low';
+      store.set('collabs', collabs);
+      toast('✓ 复盘已记录!' + c.reviewNote);
+      render();
+    };
+
+    window.saveMetrics = function() {
+      const modal = document.getElementById('metricsModal');
+      const id = modal.dataset.id;
+      const c = collabs.find(x=>x.id===id);
+      if (!c) return;
+      const views = parseFloat(document.getElementById('mf_views').value) || 0;
+      const likes = parseInt(document.getElementById('mf_likes').value) || 0;
+      const ctr   = parseFloat(document.getElementById('mf_ctr').value) || 0;
+      const new7d = parseFloat(document.getElementById('mf_new7d').value) || 0;
+      c.metrics = { views, likes, ctr, new7d };
+      // 复盘结论
+      const good = (likes >= 1500 ? 1:0) + (ctr >= 10 ? 1:0) + (new7d >= 0.5 ? 1:0);
+      c.reviewNote = good >= 3 ? '超预期,建议沉淀模版' : good >= 2 ? '达标,可复用话术' : '不及预期,下次优化预期话题';
+      c.reviewGrade = good >= 3 ? 'hot' : good >= 2 ? 'good' : 'low';
+      store.set('collabs', collabs);
+      toast('✓ 数据已记录,' + c.reviewNote);
+      closeMetrics();
+      render();
+    };
+
+    // 充分利用已有的 openScript/copyScript/markChaseResponse ...
+
+    let todoFilter = 'mine'; // 'mine' | 'all'
+    window.setTodoFilter = function(f) { todoFilter = f; render(); };
+
+    function renderTodos() {
+      const allTodos = todos();
+      const myOwner = currentOwner.trim();
+      const t = todoFilter === 'mine'
+        ? allTodos.filter(x => !x.collab.owner || x.collab.owner.trim() === myOwner)
+        : allTodos;
+      const mineCount = allTodos.filter(x => !x.collab.owner || x.collab.owner.trim() === myOwner).length;
+      const allCount  = allTodos.length;
+      if (allTodos.length === 0) return '';
+      return `
+        <div class="glass todo-block panel-hover">
+          <div class="todo-head">
+            <div class="l">
+              <h2>🔔 今日待办</h2>
+              <span class="todo-count">${t.length} 项</span>
+            </div>
+            <div style="display:flex;gap:4px;align-items:center;">
+              <button onclick="setTodoFilter('mine')" style="font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid ${todoFilter==='mine'?'rgba(0,122,255,0.4)':'rgba(0,0,0,0.1)'};background:${todoFilter==='mine'?'rgba(0,122,255,0.1)':'rgba(255,255,255,0.6)'};color:${todoFilter==='mine'?'#007aff':'var(--text-muted)'};cursor:pointer;font-weight:${todoFilter==='mine'?'600':'400'};">我的 ${mineCount}</button>
+              <button onclick="setTodoFilter('all')" style="font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid ${todoFilter==='all'?'rgba(0,122,255,0.4)':'rgba(0,0,0,0.1)'};background:${todoFilter==='all'?'rgba(0,122,255,0.1)':'rgba(255,255,255,0.6)'};color:${todoFilter==='all'?'#007aff':'var(--text-muted)'};cursor:pointer;font-weight:${todoFilter==='all'?'600':'400'};">全部 ${allCount}</button>
+            </div>
+          </div>
+          <div class="todo-list">
+            ${t.length === 0 ? `<div style="padding:16px 0;text-align:center;color:var(--text-muted);font-size:13px;">今日暂无待办，切换「全部」可查看团队进度</div>` : ''}
+            ${t.map((x, i) => {
+              const id = x.collab.id;
+              const isReview   = x.openReview === true || x.collab?.stage === 'draftReview';
+              const isPublished = false; // 已去掉录入数据功能
+              const expanded   = expandedReview[id];
+              const r = x.collab.lastReview;
+              const m = x.collab.metrics;
+
+              /* ---- 内嵌审稿面板 ---- */
+              const reviewPanel = isReview && expanded ? `
+                <div class="review-panel">
+                  ${r ? `
+                    <div class="inline-result">
+                      <div class="ir-step">STEP 1 · Brief 合规</div>
+                      <div class="${r.s1pass ? 'ir-pass' : 'ir-fail'}">${r.s1pass ? '✅ 合规' : '❌ 不合规'}</div>
+                      ${!r.s1pass ? r.issues.map(iss => `<div class="ir-issue">• ${iss}</div>`).join('') : ''}
+                      <hr class="ir-sep">
+                      <div class="ir-step">STEP 2 · 内容潜力</div>
+                      <div style="display:flex;align-items:center;gap:10px;">
+                        <span class="ir-score">${r.score}</span>
+                        <span class="review-result-badge rrb-${r.gradeColor}">${r.grade}</span>
+                      </div>
+                      ${r.suggestions.length ? r.suggestions.map(s => `<div class="ir-dim">→ ${s}</div>`).join('') : '<div class="ir-dim" style="color:rgba(20,140,80,1);">内容各项达标!</div>'}
+                    </div>
+                    <div class="feedback-box">
+                      <div class="fb-label">💬 直接发给达人的反馈</div>
+                      <div class="fb-text">${r.feedbackText}</div>
+                      <div class="fb-actions">
+                        <button class="btn-ghost" style="font-size:11px;" onclick="delete collabs.find(x=>x.id==='${id}').lastReview; store.set('collabs',collabs); render();">重新审稿</button>
+                        ${r.grade === '爆款相' || r.grade === '潜力剪' ? `<button class="btn-ghost" style="font-size:11px;" onclick="pushToTemplate('${id}')">⭐ 沉淀标题</button>` : ''}
+                        <button class="btn-ghost" style="font-size:11px;" onclick="pushScript('${id}')">💬 沉淀口播</button>
+                        <button class="btn-ghost" style="font-size:11px;" onclick="pushCta('${id}')">🎯 沉淀CTA</button>
+                        <button class="btn-primary" style="font-size:11px;" onclick="copyFeedback('${id}')">📋 复制话术</button>
+                        ${r.s1pass ? `<button class="btn-primary" style="font-size:11px;background:rgba(60,180,100,0.85);" onclick="approveAndAdvance('${id}')">✅ 审稿通过 · 推进</button>` : `<button class="btn-ghost" style="font-size:11px;opacity:0.6;" onclick="if(confirm('关键规则未全部通过,确定强行放行吗?')) approveAndAdvance('${id}')">⚠️ 强行放行</button>`}
+                      </div>
+                    </div>
+                  ` : `
+                    <div class="rp-row"><input id="rp_title_${id}" placeholder="笔记标题"></div>
+                    <div class="rp-row"><textarea id="rp_copy_${id}" placeholder="把达人发来的初稿正文贴进来,包括 #话题 和 @Sigma"></textarea></div>
+                    <div class="rp-type-row">
+                      <span style="font-size:11px;color:var(--text-muted);">类型</span>
+                      <label><input type="radio" name="rp_type_${id}" value="image" ${x.collab.tag && x.collab.tag.includes('视频') ? '' : 'checked'}> 🖼️ 图文</label>
+                      <label><input type="radio" name="rp_type_${id}" value="video" ${x.collab.tag && x.collab.tag.includes('视频') ? 'checked' : ''}> 🎬 视频</label>
+                    </div>
+                    <div class="rp-actions">
+                      <button class="btn-ghost" onclick="toggleReview('${id}')">收起</button>
+                      <button class="btn-primary" onclick="runInlineReview('${id}')">🤖 开始审稿</button>
+                    </div>
+                  `}
+                </div>
+              ` : '';
+
+              /* ---- 内嵌复盘面板 ---- */
+              const metricsPanel = isPublished && expanded ? `
+                <div class="review-panel">
+                  ${m ? `
+                    <div class="inline-result">
+                      <div class="review-result-badge rrb-${x.collab.reviewGrade || 'low'}">${x.collab.reviewNote}</div>
+                      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:8px;">
+                        <div style="text-align:center;"><div style="font-size:18px;font-weight:800;">${(m.views / 10000).toFixed(1)}<small style="font-size:10px;color:var(--text-muted);">w</small></div><div style="font-size:10px;color:var(--text-muted);">曝光</div></div>
+                        <div style="text-align:center;"><div style="font-size:18px;font-weight:800;">${m.likes.toLocaleString()}</div><div style="font-size:10px;color:var(--text-muted);">点赞</div></div>
+                        <div style="text-align:center;"><div style="font-size:18px;font-weight:800;">${m.ctr}%</div><div style="font-size:10px;color:var(--text-muted);">CTR</div></div>
+                        <div style="text-align:center;"><div style="font-size:18px;font-weight:800;">${m.new7d}%</div><div style="font-size:10px;color:var(--text-muted);">7日拉新</div></div>
+                      </div>
+                    </div>
+                    <div class="rp-actions">
+                      ${x.collab.reviewGrade === 'hot' || x.collab.reviewGrade === 'good' ? `<button class="btn-ghost" style="font-size:11px;" onclick="pushToTemplate('${id}')">⭐ 沉淀模版</button>` : ''}
+                      <button class="btn-ghost" onclick="openMetrics('${id}')">修改数据</button>
+                    </div>
+                  ` : `
+                    <div class="metric-form">
+                      <div class="mf-row">
+                        <div class="mf-field"><label>曝光(万)</label><input id="mf_views_${id}" type="number" placeholder="3.2" step="0.1"></div>
+                        <div class="mf-field"><label>点赞</label><input id="mf_likes_${id}" type="number" placeholder="1200"></div>
+                      </div>
+                      <div class="mf-row">
+                        <div class="mf-field"><label>CTR %</label><input id="mf_ctr_${id}" type="number" placeholder="9.5" step="0.1"></div>
+                        <div class="mf-field"><label>7日拉新 %</label><input id="mf_new7d_${id}" type="number" placeholder="0.4" step="0.1"></div>
+                      </div>
+                    </div>
+                    <div class="rp-actions">
+                      <button class="btn-ghost" onclick="toggleReview('${id}')">收起</button>
+                      <button class="btn-primary" onclick="saveInlineMetrics('${id}')">确认复盘</button>
+                    </div>
+                  `}
+                </div>
+              ` : '';
+
+              return `
+                <div class="todo-item ${x.urgent ? 'urgent' : ''} ${expanded ? 'expanded' : ''}">
+                  <div class="todo-ico">${x.action.includes('审') ? '✅' : (x.action.includes('复盘') || x.action.includes('首推') ? '🚀' : (x.action.includes('下一') ? '📤' : '⏰'))}</div>
+                  <div class="todo-body">
+                    <div class="todo-title">${x.collab.xhsUid ? `<a href="https://www.xiaohongshu.com/user/profile/${x.collab.xhsUid}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;border-bottom:1px dashed rgba(0,0,0,0.2);">${x.collab.name}</a>` : x.collab.xhsUrl ? `<a href="${x.collab.xhsUrl}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;border-bottom:1px dashed rgba(0,0,0,0.2);">${x.collab.name}</a>` : x.collab.name}<span style="font-size:11px;color:var(--text-muted);margin-left:8px;font-weight:400;">${x.collab.tag || ''}${x.collab.topic ? ' · ' + x.collab.topic : ''}</span></div>
+                    <div class="todo-desc">${x.text}</div>
+                    ${reviewPanel}${metricsPanel}
+                  </div>
+                  <div class="todo-actions">
+                    ${isReview
+                      ? `<button class="btn-primary" onclick="toggleReview('${id}')">${expanded && !r ? '收起 ▲' : (r ? '再次审稿 ▼' : '展开审稿 ▼')}</button>`
+                      : isPublished
+                        ? `<button class="btn-primary" onclick="toggleReview('${id}')">${expanded ? '收起 ▲' : (m ? '看数据 ▼' : '录入数据 ▼')}</button>`
+                        : (x.script ? `<button class="btn-ghost" onclick='openScript(${i})'>话术</button>` : '')
+                    }
+                    ${!isReview && !isPublished
+                      ? (x.advanceAndLink
+                          ? `<button class="btn-primary" onclick="advance('${x.collab.id}');window.open('${x.advanceAndLink}','_blank');">${x.action} →</button>`
+                          : x.link
+                          ? `<a class="btn-primary" href="${x.link}" style="text-decoration:none;">${x.action} →</a>`
+                          : x.openChase
+                            ? `<button class="btn-primary" onclick='openScript(${i})'>${x.action}</button>`
+                            : `<button class="btn-primary" onclick="advance('${x.collab.id}')">${x.action}</button>`)
+                      : ''}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+
+        function stageTabs() {
+      const counts = { all: collabs.length };
+      stages.forEach(s => counts[s] = collabs.filter(c => c.stage === s).length);
+      return `
+        <div class="stage-tabs">
+          <button class="chip-btn ${filterStage==='all'?'on':''}" onclick="setFilter('all')">全部 ${counts.all}</button>
+          ${stages.filter(s => counts[s] > 0).map(s =>
+            `<button class="chip-btn ${filterStage===s?'on':''}" onclick="setFilter('${s}')">${SM[s].label} ${counts[s]}</button>`
+          ).join('')}
+        </div>
+      `;
+    }
+
+    let showAll = false;
+    window.toggleShowAll = function() { showAll = !showAll; render(); };
+
+    function renderBoard() {
+      const activeIds = new Set(todos().map(t => t.collab.id));
+      let rowsSource = collabs.filter(c => filterStage === 'all' ? true : c.stage === filterStage);
+      if (!showAll && filterStage === 'all') {
+        rowsSource = rowsSource.filter(c => !activeIds.has(c.id));
+      }
+      const rows = rowsSource.map(c => {
+        const meta = SM[c.stage];
+        const days = daysSince(c.stageAt);
+        const overdue = meta && meta.sla > 0 && days >= meta.sla && c.stage !== 'promoting' && c.stage !== 'archived';
+        const showProgress = c.stage !== 'invited' && c.stage !== 'archived';
+        return `
+          <div class="collab-row">
+            <div class="creator">
+              <div class="n">${c.name}${(c.xhsUrl && !c.xhsUid)?` <a href="${c.xhsUrl}" target="_blank" rel="noopener" style="font-size:11px;color:rgba(20,90,180,0.7);text-decoration:none;" title="小红书主页">↗</a>`:''}
+              ${c.xhsUid?`<a href="https://www.xiaohongshu.com/user/profile/${c.xhsUid}" target="_blank" rel="noopener" style="font-size:10px;color:rgba(120,130,160,0.7);margin-left:4px;font-family:monospace;text-decoration:none;" title="小红书主页 UID: ${c.xhsUid}">${c.xhsUid.slice(-8)} ↗</a>`:''}</div>
+              <div class="m">${c.fans && c.fans !== '-' ? c.fans + ' 粉 · ' : ''}${c.tag}${c.owner?' · '+c.owner:''}</div>
+            </div>
+            <div><span class="stage-chip ${meta.color}">${meta.label}</span></div>
+            <div>${showProgress ? progressBar(c.stage) : `<div style="font-size:11px;color:var(--text-muted);">${c.note||''}</div>`}</div>
+            <div class="age-note ${overdue?'overdue':''}">${c.promisedDraft?`初稿:<b>${c.promisedDraft}</b>`:`在此阶段 ${days} 天`}${overdue?' · 超时':''}</div>
+            <div><button class="btn-ghost" onclick="advance('${c.id}')">推进 →</button></div>
+          </div>
+        `;
+      }).join('');
+      const heading = filterStage === 'all'
+        ? `<div class="section-title">其他达人 <span style="font-size:11px;color:var(--text-muted);font-weight:400;margin-left:6px;">${showAll ? '全部' : '非今日待办'} · ${rowsSource.length}人</span></div>`
+        : `<div class="section-title">${SM[filterStage]?.label || filterStage} · ${rowsSource.length} 人</div>`;
+      return `
+        <div class="glass collab-block collab-board panel-hover">
+          <div class="board-head">
+            ${heading}
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+              <button class="btn-ghost" onclick="toggleShowAll()" style="font-size:11px;">${showAll ? '∅ 只看非待办' : '🔍 展开全部'}</button>
+              ${stageTabs()}
+            </div>
+          </div>
+          <div class="collab-list">${rows || '<div style="text-align:center;color:var(--text-muted);padding:24px 0;font-size:13px;">🎉 待办已充分覆盖,无其他达人需关注</div>'}</div>
+        </div>
+      `;
+    }
+
+    // ===== 操作 =====
+    window.setFilter = function(s) { filterStage = s; render(); };
+    window.advance = function(id) {
+      const c = collabs.find(x => x.id === id);
+      if (!c) return;
+      const nx = NEXT_STAGE[c.stage];
+      if (!nx) return;
+      c.stage = nx;
+      c.stageAt = '2026-07-30T16:30:00+08:00';
+      // 推进后重置催办记录
+      c.chaseCount = 0;
+      c.lastResponse = null;
+      c.chaseHistory = c.chaseHistory || [];
+      store.set('collabs', collabs);
+      toast(`${c.name} → ${SM[c.stage].label}`);
+      render();
+    };
+    window.addNew = function() {
+      const modal = document.getElementById('createModal');
+      if (modal) {
+        // 默认填充归属人
+        const owner = document.getElementById('nf_owner');
+        if (owner) owner.value = currentOwner;
+        // 清空之前的内容
+        ['nf_name','nf_draft','nf_pub','nf_url','nf_topic','nf_quick','nf_noteurl','nf_noteid'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
+        ['nf_uid_hint','nf_noteid_hint'].forEach(id=>{const el=document.getElementById(id); if(el) el.textContent='';});
+        modal.classList.add('open');
+        modal.querySelector('#nf_quick').focus();
+        return;
+      }
+    };
+    window.closeCreate = function() { document.getElementById('createModal')?.classList.remove('open'); };
+
+    // ===== 批量分析 =====
+    window.openBatchAnalysis = function() {
+      // 收集已发布达人（有 noteId 的优先，其次用 xhsUid）
+      const published = collabs.filter(c => ['published','promoting'].includes(c.stage));
+      const lines = published.map(c => {
+        const id = c.noteId || '';
+        const uid = c.xhsUid || '';
+        const url = c.noteUrl || c.xhsUrl || '';
+        return `${c.name}\t${id}\t${uid}\t${url}\t${c.topic||''}\t${c.noteType||'image'}`;
+      });
+      const header = '达人\t笔记ID\tUID\t链接\t主题\t类型';
+      const text = [header, ...lines].join('\n');
+
+      let modal = document.getElementById('batchAnalysisModal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'batchAnalysisModal';
+        modal.className = 'copy-modal';
+        modal.innerHTML = `
+          <div class="glass copy-modal-panel" style="width:600px;max-height:85vh;overflow-y:auto;">
+            <div class="m-title">📊 批量分析 · 已发布笔记</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Step 1：复制下面清单发给 AI 助手 → Step 2：AI 返回 JSON 后点「导入分析结果」</div>
+            <textarea id="ba_export" style="width:100%;min-height:160px;font-family:monospace;font-size:11px;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.1);background:rgba(255,255,255,0.7);box-sizing:border-box;resize:vertical;" readonly></textarea>
+            <div style="display:flex;gap:8px;margin:10px 0 4px;">
+              <button class="btn-primary" style="font-size:12px;" onclick="
+                navigator.clipboard.writeText(document.getElementById('ba_export').value);
+                toast('已复制，发给 AI 助手吧！');
+              ">📋 复制清单</button>
+            </div>
+            <hr style="border:none;border-top:1px solid rgba(0,0,0,0.07);margin:12px 0;">
+            <div style="font-size:12px;font-weight:600;margin-bottom:6px;">Step 2 · 导入分析结果</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">将 AI 返回的 JSON 粘贴到这里，自动回填数据 + 推荐模版候选</div>
+            <textarea id="ba_import" placeholder='粘贴 JSON…' style="width:100%;min-height:120px;font-family:monospace;font-size:11px;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.1);background:rgba(255,255,255,0.7);box-sizing:border-box;resize:vertical;"></textarea>
+            <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end;">
+              <button class="btn-ghost" onclick="document.getElementById('batchAnalysisModal').classList.remove('open')">关闭</button>
+              <button class="btn-primary" onclick="importAnalysisResult()">✓ 导入分析结果</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+      document.getElementById('ba_export').value = text;
+      modal.classList.add('open');
+    };
+
+    window.importAnalysisResult = function() {
+      const raw = document.getElementById('ba_import')?.value.trim();
+      if (!raw) { toast('请先粘贴 JSON'); return; }
+      let data;
+      try { data = JSON.parse(raw); } catch(e) { toast('JSON 格式错误，请检查'); return; }
+      // data 格式：{ results: [{name, noteId, imp, ctr, ces, playRate, fans, diagnosis, templates:[{kind,name,text}]}, ...] }
+      const results = data.results || data;
+      let updated = 0, tplAdded = 0;
+      const tpls = store.get('templates', { titles:[], scripts:[], ctas:[] });
+      results.forEach(r => {
+        const c = collabs.find(x => x.noteId === r.noteId || x.name === r.name);
+        if (c) {
+          c.analysis = { imp: r.imp, ctr: r.ctr, ces: r.ces, playRate: r.playRate, fans: r.fans, diagnosis: r.diagnosis, updatedAt: new Date().toISOString() };
+          updated++;
+        }
+        (r.templates||[]).forEach(t => {
+          const kind = t.kind === '标题' ? 'titles' : t.kind === '口播' ? 'scripts' : 'ctas';
+          const exists = (tpls[kind]||[]).some(x => x.text === t.text);
+          if (!exists) {
+            const newItem = kind === 'titles'
+              ? { type: t.name||'自动沉淀', text: t.text, from:[r.name||'分析导入'], avgLikes: r.fans||0, badge:'待验证', id: Date.now()+Math.random() }
+              : { name: t.name||'自动沉淀', text: t.text, from:[r.name||'分析导入'], id: Date.now()+Math.random() };
+            tpls[kind] = [newItem, ...(tpls[kind]||[])];
+            tplAdded++;
+          }
+        });
+      });
+      store.set('collabs', collabs);
+      store.set('templates', tpls);
+      toast(`已更新 ${updated} 条笔记数据，入库 ${tplAdded} 个模版`);
+      document.getElementById('batchAnalysisModal').classList.remove('open');
+      render();
+    };
+    // 一键解析:从粘贴文本中抽取字段
+    window.parseQuick = function() {
+      const text = document.getElementById('nf_quick').value;
+      if (!text.trim()) { toast('先粘贴一段内容'); return; }
+      const parsed = parseQuickText(text);
+      // 回填到表单
+      if (parsed.name) document.getElementById('nf_name').value = parsed.name;
+      if (parsed.noteType) {
+        const r = document.querySelector(`input[name="nf_type"][value="${parsed.noteType}"]`);
+        if (r) r.checked = true;
+      }
+      if (parsed.draft) document.getElementById('nf_draft').value = parsed.draft;
+      if (parsed.pub) document.getElementById('nf_pub').value = parsed.pub;
+      if (parsed.url) document.getElementById('nf_url').value = parsed.url;
+      if (parsed.uid) {
+        const el = document.getElementById('nf_uid'); if(el) el.value = parsed.uid;
+        const hint = document.getElementById('nf_uid_hint'); if(hint) hint.textContent = 'UID: ' + parsed.uid;
+      }
+      if (parsed.topic) document.getElementById('nf_topic').value = parsed.topic;
+      // 反馈
+      const hits = [];
+      if (parsed.name) hits.push('达人名');
+      if (parsed.noteType) hits.push('类型');
+      if (parsed.draft) hits.push('初稿日');
+      if (parsed.pub) hits.push('发布日');
+      if (parsed.topic) hits.push('主题');
+      if (parsed.url) hits.push('链接');
+      toast(hits.length ? `✓ 已解析:${hits.join('、')}` : '⚠️ 未识别到字段,请手动填写');
+    };
+
+    function parseQuickText(text) {
+      const out = {};
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+      // 建映射
+      lines.forEach(line => {
+        // 去除开头的项目符号
+        const clean = line.replace(/^[·•○●\-*]\s*/, '');
+
+        // 合作形式 / 笔记类型
+        if (/(合作形式|笔记(形式|类型))/.test(clean)) {
+          if (/视频/.test(clean)) out.noteType = 'video';
+          else if (/图文/.test(clean)) out.noteType = 'image';
+        }
+
+        // 达人名:仅当行以"达人"开头才化为 name,避免误命中
+        const nameM = clean.match(/^(?:小红书名称|达人名|博主|昵称)[::]\s*(.+)$/);
+        if (nameM) out.name = nameM[1].trim();
+
+        // 主题
+        const topicM = clean.match(/^(?:（?主题）?)[：:]?\s*(.+)$/);
+        if (topicM && !/^\?/.test(topicM[1])) out.topic = topicM[1].trim();
+
+        // 初稿日期
+        if (/初稿/.test(clean)) {
+          const d = extractDate(clean);
+          if (d) out.draft = d;
+        }
+        // 发布日期
+        if (/发布|发文/.test(clean) && !/发布链接|发布主页/.test(clean)) {
+          const d = extractDate(clean);
+          if (d) out.pub = d;
+        }
+
+        // 主页链接 / UID
+        const urlM = clean.match(/https?:\/\/\S+/);
+        if (urlM) {
+          out.url = urlM[0];
+          // 小红书主页链接就直接提取 UID
+          const uidM = urlM[0].match(/\/profile\/([a-f0-9]{24})/);
+          if (uidM) out.uid = uidM[1];
+        }
+        // UID 裸後缀(静态 24 位 16进制字符串)
+        const bareUid = clean.match(/\b([a-f0-9]{24})\b/);
+        if (bareUid && !out.uid) out.uid = bareUid[1];
+      });
+
+      return out;
+    }
+
+    function extractDate(str) {
+      // 绝对日期匹配
+      const m = str.match(/(\d{1,2})[.\/月-](\d{1,2})/);
+      if (m) {
+        const mm = String(+m[1]).padStart(2,'0');
+        const dd = String(+m[2]).padStart(2,'0');
+        return `2026-${mm}-${dd}`;
+      }
+      // 相对日期:今天/明天/后天
+      const today = new Date('2026-07-30');
+      if (/今天/.test(str)) return today.toISOString().slice(0,10);
+      if (/明天/.test(str)) { const t=new Date(today); t.setDate(t.getDate()+1); return t.toISOString().slice(0,10); }
+      if (/后天/.test(str)) { const t=new Date(today); t.setDate(t.getDate()+2); return t.toISOString().slice(0,10); }
+      // 下周 X
+      const wk = str.match(/(下周|本周)([一二三四五六日天])/);
+      if (wk) {
+        const map = { '一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'日':0,'天':0 };
+        const targetDay = map[wk[2]];
+        const t = new Date(today);
+        const cur = t.getDay();
+        let diff = targetDay - cur;
+        if (wk[1] === '下周') diff += 7;
+        if (diff <= 0) diff += 7;
+        t.setDate(t.getDate() + diff);
+        return t.toISOString().slice(0,10);
+      }
+      return null;
+    }
+
+    window.saveCreate = function() {
+      const name = document.getElementById('nf_name').value.trim();
+      if (!name) { toast('请填写达人名'); return; }
+      const noteType = document.querySelector('input[name="nf_type"]:checked')?.value || 'image';
+      const owner = document.getElementById('nf_owner').value.trim() || currentOwner;
+      if (owner !== currentOwner) { currentOwner = owner; store.set('owner', owner); }
+      const c = {
+        id: 'k' + Date.now(),
+        name,
+        fans: '-',
+        direction: 'runner',
+        tag: noteType === 'video' ? '视频' : '图文',
+        topic: document.getElementById('nf_topic')?.value.trim() || '',
+        stage: 'invited',
+        stageAt: new Date().toISOString(),
+        promisedDraft: document.getElementById('nf_draft').value || null,
+        expectPublishAt: document.getElementById('nf_pub').value || null,
+        xhsUrl: document.getElementById('nf_url').value.trim() || '',
+        noteUrl: document.getElementById('nf_noteurl')?.value.trim() || '',
+        noteId: (()=>{ const v=document.getElementById('nf_noteurl')?.value.trim()||''; const hid=document.getElementById('nf_noteid')?.value.trim()||''; if(hid) return hid; const m=v.match(/^([a-f0-9]{24})$/); return m?m[1]:''; })(),
+        xhsUid: (() => {
+          const urlVal = document.getElementById('nf_url').value.trim();
+          const uidEl  = document.getElementById('nf_uid');
+          // 优先用隐藏 uid 字段(一键解析填入)
+          if (uidEl && uidEl.value.trim()) return uidEl.value.trim();
+          // 其次从 URL 提取
+          const m = urlVal.match(/\/profile\/([a-f0-9]{24})/);
+          if (m) return m[1];
+          // 裸 UID
+          const bare = urlVal.match(/^([a-f0-9]{24})$/);
+          return bare ? bare[1] : '';
+        })(),
+        owner,
+        note: '',
+        source: 'manual',
+        chaseCount: 0,
+      };
+      collabs.push(c);
+      store.set('collabs', collabs);
+      closeCreate();
+      toast('已新建合作:' + name);
+      render();
+    };
+
+    // 切换当前操作人
+    window.changeOwner = function() {
+      const next = prompt('当前操作人:', currentOwner);
+      if (next && next.trim()) {
+        currentOwner = next.trim();
+        store.set('owner', currentOwner);
+        toast('当前操作人已切换为:' + currentOwner);
+        render();
+      }
+    };
+
+    // ========== 从表格导入 ==========
+    let importPreview = null;
+    window.openImport = function() { document.getElementById('importModal').classList.add('open'); document.getElementById('im_paste').focus(); };
+    window.closeImport = function() { document.getElementById('importModal').classList.remove('open'); importPreview = null; renderImportPreview(); };
+    window.parseImport = function() {
+      const text = document.getElementById('im_paste').value;
+      if (!text.trim()) { toast('请先粘贴表格内容'); return; }
+      const parsed = window.SHEET_IMPORT.parsePaste(text);
+      const rec = window.SHEET_IMPORT.reconcile(parsed.rows, collabs);
+      importPreview = { ...parsed, ...rec };
+      renderImportPreview();
+    };
+    window.confirmImport = function() {
+      if (!importPreview) return;
+      const newOnes = importPreview.rows.filter(r => !r.exists);
+      newOnes.forEach(r => collabs.push(window.SHEET_IMPORT.toCollab(r, currentOwner)));
+      store.set('collabs', collabs);
+      toast(`✓ 已导入 ${newOnes.length} 条达人合作`);
+      closeImport();
+      render();
+    };
+
+    function renderImportPreview() {
+      const box = document.getElementById('im_preview');
+      if (!box) return;
+      if (!importPreview) { box.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:24px;font-size:12px;">粘贴后点「解析预览」</div>'; document.getElementById('im_confirm').disabled = true; return; }
+      const { rows, toAdd, unchanged } = importPreview;
+      const list = rows.map(r => `
+        <div class="im-row ${r.exists?'skip':''} ${r.dateOk?'':'warn'}">
+          <div style="font-size:12px;">
+            <b>${r.name}</b>
+            <span style="color:var(--text-muted);margin-left:6px;">${r.noteTypeRaw||r.noteType}</span>
+            ${r.owner?`<span style="color:var(--text-muted);margin-left:6px;">· ${r.owner}</span>`:''}
+          </div>
+          <div style="font-size:11px;color:${r.dateOk?'var(--text-soft)':'rgba(180,90,20,1)'};">
+            ${r.exists ? '🔄 已存在' : '➕ 新增'} · 日期:${r.dateHint} · 状态:${r.statusRaw||'未发布'}
+          </div>
+        </div>
+      `).join('');
+      box.innerHTML = `
+        <div class="im-summary">
+          共 <b>${rows.length}</b> 行 · 新增 <b style="color:rgba(20,120,80,1);">${toAdd}</b> · 已存在 <b>${unchanged}</b>
+          · 日期可确认 <b>${rows.filter(r=>r.dateOk).length}/${rows.length}</b>
+        </div>
+        <div class="im-list">${list}</div>
+      `;
+      document.getElementById('im_confirm').disabled = toAdd === 0;
+    }
+
+    let scriptData = null;
+    let scriptIdx = null;
+    window.openScript = function(idx) {
+      scriptIdx = idx;
+      scriptData = todos()[idx];
+      const modal = document.getElementById('scriptModal');
+      modal.querySelector('.m-title').textContent = `催办话术 · ${scriptData.collab.name}`;
+      modal.querySelector('.m-sub').textContent = scriptData.text;
+      modal.querySelector('.m-text').textContent = scriptData.script || '';
+      // 是否展示"记录回复"区域
+      const respBox = modal.querySelector('.chase-response');
+      if (respBox) respBox.style.display = scriptData.openChase ? 'block' : 'none';
+      modal.classList.add('open');
+    };
+    window.closeScript = function() { document.getElementById('scriptModal').classList.remove('open'); };
+    window.copyScript = function() {
+      if (scriptData.script) copyText(scriptData.script, '话术已复制,粘贴给达人即可');
+      // 不关闭,便于接着记录响应
+    };
+
+    // 记录催办后的回复
+    window.markChaseResponse = function(kind) {
+      if (!scriptData) return;
+      const c = scriptData.collab;
+      c.chaseCount = (c.chaseCount || 0) + 1;
+      c.chaseHistory = c.chaseHistory || [];
+      const today = '2026-07-30';
+      if (kind === 'promised') {
+        const newDate = prompt('达人承诺新日期:', '2026-08-05');
+        if (!newDate) return;
+        c.promisedDraft = newDate;
+        c.lastResponse = `承诺 ${newDate}`;
+        c.chaseHistory.push({ date: today, response: c.lastResponse });
+        toast(`已记录承诺:${newDate}`);
+      } else if (kind === 'received') {
+        // 直接推进下一阶段
+        c.stage = NEXT_STAGE[c.stage] || c.stage;
+        c.stageAt = new Date().toISOString();
+        c.chaseCount = 0;
+        c.lastResponse = null;
+        toast(`${c.name} → ${SM[c.stage].label}`);
+      } else if (kind === 'noreply') {
+        c.lastResponse = '未回复';
+        c.chaseHistory.push({ date: today, response: '未回复' });
+        toast(`已记录未回复(已催 ${c.chaseCount} 次)`);
+      } else if (kind === 'terminate') {
+        if (!confirm(`确认终止与 ${c.name} 的合作?`)) return;
+        c.stage = 'archived';
+        c.stageAt = new Date().toISOString();
+        c.lastResponse = '已终止';
+        toast(`已归档:${c.name}`);
+      }
+      store.set('collabs', collabs);
+      closeScript();
+      render();
+    };
+
+    function stats() {
+      const today = '2026-07-30';
+      // 今日应出初稿:本阶段待初稿
+      const shouldDraft = collabs.filter(c => c.stage === 'draftReview' || c.stage === 'scriptApproved').length;
+      // 今日应发布:预期发布日期 = 今天,且未到推流阶段
+      const shouldPublish = collabs.filter(c => c.expectPublishAt === today && c.stage !== 'promoting' && c.stage !== 'archived').length;
+      // 已逾期未响应:预期发布日已过且仍未发布
+      const overdue = collabs.filter(c => {
+        if (!c.expectPublishAt) {
+          // 无预期日期→ fallback SLA
+          const meta = SM[c.stage];
+          return meta && meta.sla > 0 && daysSince(c.stageAt) >= meta.sla && c.stage !== 'promoting' && c.stage !== 'archived';
+        }
+        return c.expectPublishAt < today && c.stage !== 'promoting' && c.stage !== 'archived';
+      }).length;
+      return { shouldDraft, shouldPublish, overdue };
+    }
+
+    function renderOverview() {
+      const s = stats();
+      const tCount = todos().length;
+      return `
+        <div class="summary-line">
+          <span class="sl-num">${tCount}</span> 项待办
+          <span class="sl-sep">·</span>
+          <span>今日应初稿 <b>${s.shouldDraft}</b></span>
+          <span class="sl-sep">·</span>
+          <span>今日应发布 <b>${s.shouldPublish}</b></span>
+          <span class="sl-sep">·</span>
+          <span class="${s.overdue>0?'sl-danger':''}">已逾期 <b>${s.overdue}</b></span>
+        </div>
+      `;
+    }
+
+    function render() {
+      const importedCount = collabs.filter(c => c.source === 'imported').length;
+      const html = `
+        <div class="glass page-hero panel-hover">
+          <div style="display:flex;justify-content:space-between;align-items:start;gap:12px;flex-wrap:wrap;">
+            <div>
+              <h1>达人清单</h1>
+              <div class="sub">
+                合作状态与时间节点全览
+                <span class="owner-pill" onclick="changeOwner()" title="点击切换归属人">
+                  👤 当前:<b>${currentOwner}</b> <span style="opacity:0.4;">⚙︎</span>
+                </span>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn-ghost" onclick="openImport()">📥 从登记表导入</button>
+              <button class="btn-primary" onclick="addNew()">+ 新建合作</button>
+            </div>
+          </div>
+          ${importedCount === 0 ? `
+            <div class="tip-strip">
+              ✨ 首次使用?<b>把登记表内容粘贴过来</b>,一键导入所有达人合作。之后就在这里管理,不需要再开表格了。
+            </div>
+          ` : ''}
+        </div>
+        ${renderBoard()}
+
+        <div class="copy-modal" id="scriptModal">
+          <div class="glass copy-modal-panel" style="width:560px;">
+            <div class="m-title"></div>
+            <div class="m-sub"></div>
+            <div class="m-text"></div>
+            <div class="chase-response">
+              <div class="chase-title">达人怎么回复的?</div>
+              <div class="chase-actions">
+                <button class="chase-btn ok" onclick="markChaseResponse('received')">✅ 已收到脚本/稿</button>
+                <button class="chase-btn wait" onclick="markChaseResponse('promised')">🕒 承诺新日期</button>
+                <button class="chase-btn silent" onclick="markChaseResponse('noreply')">💤 未回复</button>
+                <button class="chase-btn danger" onclick="markChaseResponse('terminate')">⊘ 终止合作</button>
+              </div>
+            </div>
+            <div class="m-actions">
+              <button class="btn-ghost" onclick="closeScript()">关闭</button>
+              <button class="btn-primary" onclick="copyScript()">📋 复制话术</button>
+              <a class="btn-ghost" href="wxwork://" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px;" onclick="copyScript()">💬 复制并打开企业微信</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- 新建合作弹窗(精简版) -->
+        <div class="copy-modal" id="createModal">
+          <div class="glass copy-modal-panel" style="width:560px;max-height:90vh;overflow-y:auto;">
+            <div class="m-title">新建合作</div>
+            <div class="m-sub">💡 粘贴合作信息自动解析,或直接手动填写</div>
+
+            <div class="quick-box">
+              <textarea id="nf_quick" placeholder="粘贴完整合作信息,自动抽取,如:&#10;&#10;达人名:小红薯&#10;合作形式:图文&#10;主题:晚跑日常 vlog&#10;具体时间安排&#10;· 初稿:8/2&#10;· 发布:8/5&#10;主页:https://www.xiaohongshu.com/user/profile/xxx"></textarea>
+              <button class="btn-primary parse-btn" onclick="parseQuick()">✨ 一键解析填充</button>
+            </div>
+
+            <div class="form-divider">或手动填写</div>
+
+            <div class="form-group"><label>达人名</label><input id="nf_name" placeholder="小红薯"></div>
+            <div class="form-group"><label>主题(可选)</label><input id="nf_topic" placeholder="如:晚跑日常 vlog"></div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>笔记类型</label>
+                <div style="display:flex;gap:14px;padding:10px 0 6px;font-size:13px;">
+                  <label style="cursor:pointer;"><input type="radio" name="nf_type" value="image" checked> 🖼️ 图文</label>
+                  <label style="cursor:pointer;"><input type="radio" name="nf_type" value="video"> 🎬 视频</label>
+                </div>
+              </div>
+              <div class="form-group"><label>初稿审核日期</label><input type="date" id="nf_draft"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>发布日期</label><input type="date" id="nf_pub"></div>
+              <div class="form-group">
+                <label>主页链接(可选)</label>
+                <input id="nf_url" placeholder="https://www.xiaohongshu.com/user/profile/..."
+                  oninput="(function(){
+                    const v=this.value.trim();
+                    const m=v.match(/\/profile\/([a-f0-9]{24})/);
+                    const uid=m?m[1]:(v.match(/^([a-f0-9]{24})$/)||[])[1]||'';
+                    document.getElementById('nf_uid').value=uid;
+                    document.getElementById('nf_uid_hint').textContent=uid?'UID: '+uid:'';
+                  }).call(this)">
+                <input type="hidden" id="nf_uid">
+                <div id="nf_uid_hint" style="font-size:11px;color:rgba(100,120,180,0.85);margin-top:2px;min-height:16px;"></div>
+              </div>
+            </div>
+            <div class="owner-line">
+              <span>归属：</span>
+              <input id="nf_owner" placeholder="王佳欣">
+              <span style="color:var(--text-muted);">(默认 = 你，可改)</span>
+            </div>
+            <div class="form-group" style="margin-top:6px;">
+              <label>笔记 ID（可选，发布后填）</label>
+              <input id="nf_noteurl" placeholder="直接填 24 位 Note ID 或完整链接均可"
+                oninput="(function(){
+                  const v=this.value.trim();
+                  const m=v.match(/\/explore\/([a-f0-9]{24})/) || v.match(/\/discovery\/item\/([a-f0-9]{24})/) || v.match(/noteId=([a-f0-9]{24})/) || v.match(/^([a-f0-9]{24})$/);
+                  const el=document.getElementById('nf_noteid_hint');
+                  if(m){ if(el) el.textContent='Note ID: '+m[1]; const hidEl=document.getElementById('nf_noteid'); if(hidEl) hidEl.value=m[1]; }
+                  else { if(el) el.textContent=''; }
+                }).call(this)">
+              <input type="hidden" id="nf_noteid">
+              <div id="nf_noteid_hint" style="font-size:11px;color:rgba(100,120,180,0.85);margin-top:2px;min-height:16px;"></div>
+            </div>
+            <div class="m-actions">
+              <button class="btn-ghost" onclick="closeCreate()">取消</button>
+              <button class="btn-primary" onclick="saveCreate()">保存</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 从表格导入弹窗 -->
+        <div class="copy-modal" id="importModal">
+          <div class="glass copy-modal-panel" style="width:640px;max-height:88vh;">
+            <div class="m-title">📥 从登记表导入</div>
+            <div class="m-sub">打开表格 → Cmd/Ctrl+A → Cmd/Ctrl+C → 粘贴到下方</div>
+            <div class="form-group">
+              <label>粘贴表格内容(制表符分隔)</label>
+              <textarea id="im_paste" placeholder="发布日期\t小红书名称\t笔记形式\towner\t发布状态\t主页链接\n初稿:7/30\t内千斤\t图文\t王佳欣\t未发布\t\n..." style="min-height:140px;font-family:monospace;font-size:12px;"></textarea>
+            </div>
+            <button class="btn-ghost" onclick="parseImport()">🔍 解析预览</button>
+            <div id="im_preview" style="margin-top:14px;"></div>
+            <div class="m-actions">
+              <button class="btn-ghost" onclick="closeImport()">取消</button>
+              <button class="btn-primary" id="im_confirm" onclick="confirmImport()" disabled>确认导入</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.querySelector('.content-scroll').innerHTML = html;
+      renderImportPreview();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      mountShell('');
+      render();
+    });
+  </script>
+</body>
+</html>

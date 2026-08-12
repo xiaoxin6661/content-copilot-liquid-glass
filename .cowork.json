@@ -1,0 +1,25 @@
+{
+  "schema": "cowork-project/v1",
+  "id": "cw_proj_jn12by6vud",
+  "name": "content-copilot-liquid-glass",
+  "srcDir": "/home/node/.openclaw/workspace/cowork/content-copilot-liquid-glass",
+  "createdAt": 1785395365400,
+  "updatedAt": 1785851679596,
+  "createdBy": "cowork-cli",
+  "stack": null,
+  "guardCompliant": true,
+  "cowork": {
+    "workId": 126098,
+    "workDeployType": "STATIC_RESOURCE",
+    "staticResourceId": 4723,
+    "staticAppId": "sr-ba7b2134",
+    "alias": "content-copilot-liquid-glass",
+    "accessUrl": "https://cowork.xiaohongshu.com/f/content-copilot-liquid-glass/",
+    "coworkAppUrl": "https://cowork.xiaohongshu.com/app/NWEzYzE4MmJm",
+    "rawAccessUrl": "https://cowork.xiaohongshu.com/f/sr-ba7b2134/",
+    "publishedAt": 1785851679596,
+    "visibility": "DEPARTMENTS",
+    "version": "2.12.1",
+    "lastZipHash": "sha256:f7889943f4b6de55618ef3932d01a8970d97cfef1626b6d97102a02dd5cead38"
+  }
+}
